@@ -1,0 +1,62 @@
+
+export type Platform = 'mobile' | 'web';
+
+export type GenerationMode = 'default' | 'redesign' | 'copy' | 'agentic';
+
+export interface GeneratedApp {
+  reactNativeCode: string; // Serves as "Production Code" (React Native for Mobile, React DOM for Web)
+  webCompatibleCode: string; // Serves as "Preview Code"
+  explanation: string;
+  name: string;
+  platform: Platform;
+  icon?: string; // SVG String
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  appData?: GeneratedApp;
+  attachment?: string; // Base64 image
+  timestamp: number;
+  sources?: { title: string; uri: string }[];
+}
+
+export enum AppState {
+  IDLE = 'IDLE',
+  GENERATING = 'GENERATING',
+  ERROR = 'ERROR',
+  SUCCESS = 'SUCCESS'
+}
+
+export interface CanvasApp {
+  id: string;
+  data: GeneratedApp;
+  x: number;
+  y: number;
+  zIndex: number;
+}
+
+export interface BuildJob {
+  id: string;
+  status: string;
+  logs: string[];
+  buildUrl?: string;
+  createdAt: number;
+}
+
+export type Page = 'home' | 'projects' | 'settings';
+
+export interface UserProfile {
+  name: string;
+  handle: string;
+  bio: string;
+  avatarUrl: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  platform: Platform;
+  lastEdited: string;
+  icon?: string;
+}

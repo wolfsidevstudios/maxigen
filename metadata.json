@@ -1,0 +1,7 @@
+{
+  "name": "MaxiGen",
+  "description": "A modern AI-powered builder for React Native Expo applications. Generate mobile apps with natural language and preview them instantly in the web browser.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
