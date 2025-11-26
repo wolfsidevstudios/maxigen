@@ -1,6 +1,6 @@
-
 import { GoogleGenAI, Type, Schema, Part, Tool } from "@google/genai";
 import { GeneratedApp, Platform, GenerationMode } from "../types";
+import { processCodeWithMedia } from "./mediaService";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -14,7 +14,7 @@ const singleAppSchema: Schema = {
     },
     webCompatibleCode: {
       type: Type.STRING,
-      description: "A functional React component for the iframe preview. DO NOT use imports. DO NOT use 'export default'. Define the main component as 'const App = () => { ... }'. Access icons via 'const { IconName } = LucideReact'. Use standard HTML tags (div, span, button) styled with Tailwind CSS.",
+      description: "A functional React component for the iframe preview. DO NOT use imports. DO NOT use 'export default'. Define the main component GLOBALLY as 'const App = () => { ... }' or 'function App() { ... }'. Access icons via 'const { IconName } = LucideReact'. Use standard HTML tags (div, span, button) styled with Tailwind CSS.",
     },
     explanation: {
       type: Type.STRING,
@@ -67,6 +67,14 @@ export const generateAppCode = async (
     - Buttons: "Pill shaped" (rounded-full).
     - Aesthetic: "Apple-like", premium, "AI vibe".
     
+    MEDIA & IMAGES (CRITICAL):
+    - NEVER use generic placeholder URLs like 'via.placeholder.com' or 'example.com/image.jpg'.
+    - Use this SPECIAL FORMAT to request real media:
+       - Images: "https://maxigen.media/image?q=SEARCH_TERM"  (e.g., "https://maxigen.media/image?q=coffee shop interior")
+       - GIFs:   "https://maxigen.media/gif?q=SEARCH_TERM"    (e.g., "https://maxigen.media/gif?q=loading animation")
+       - Videos: "https://maxigen.media/video?q=SEARCH_TERM"  (e.g., "https://maxigen.media/video?q=nature relaxation")
+    - For Web Apps: Ensure layouts are SCROLLABLE. Use 'min-h-screen', 'overflow-y-auto', and plenty of content sections (Hero, Features, Testimonials, Footer) populated with these real images.
+    
     For EACH screen, you need to generate:
     1. 'reactNativeCode': The copy-pasteable PRODUCTION code.
     2. 'webCompatibleCode': The PREVIEW code for our internal iframe simulator.
@@ -79,7 +87,7 @@ export const generateAppCode = async (
     - Use 'lucide-react-native' for icons.
     - Use 'StyleSheet', 'View', 'Text', 'TouchableOpacity', 'ScrollView', 'SafeAreaView'.
     - Must export default App.
-    - Preview code: VISUAL SIMULATION using React DOM + Tailwind. No imports.
+    - Preview code: VISUAL SIMULATION using React DOM + Tailwind. NO IMPORTS. Define 'const App = ...' globally.
   `;
 
   const webInstructions = `
@@ -87,7 +95,8 @@ export const generateAppCode = async (
     - Standard React Functional Component.
     - Use Tailwind CSS classes for styling.
     - 'export default function App() { ... }'
-    - Preview code: No imports. 'const App = () => { ... }'
+    - Preview code: NO IMPORTS. Define 'const App = ...' globally.
+    - LAYOUT: Ensure the page is long enough to scroll. Add padding, large images, and distinct sections.
   `;
 
   let modeSpecificInstructions = "";
@@ -123,9 +132,9 @@ export const generateAppCode = async (
       `;
   } else if (mode === 'agentic') {
       // AGENTIC MODE CONFIGURATION
-      modelName = "gemini-3-pro-preview"; // Use Pro for higher reasoning
+      modelName = "gemini-2.0-flash-exp"; 
       tools = [{ googleSearch: {} }]; // Enable Search Grounding
-      useJsonSchema = false; // Disable strict schema when using Search (API Constraint)
+      useJsonSchema = false; // Disable strict schema when using Search
       
       modeSpecificInstructions = `
         MODE: AGENTIC (RESEARCH & DESIGN)
@@ -181,7 +190,8 @@ export const generateAppCode = async (
         responseMimeType: useJsonSchema ? "application/json" : undefined,
         responseSchema: useJsonSchema ? multiAppSchema : undefined,
         tools: tools,
-        thinkingConfig: { thinkingBudget: 0 }
+        thinkingConfig: { thinkingBudget: 0 },
+        maxOutputTokens: 60000 // Increase token limit to prevent truncated JSON
       },
     });
 
@@ -191,7 +201,7 @@ export const generateAppCode = async (
     }
 
     // Agentic Mode Handling: Extract JSON from potential Markdown text
-    if (mode === 'agentic') {
+    if (mode === 'agentic' || !useJsonSchema) {
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
             text = jsonMatch[0];
@@ -205,11 +215,30 @@ export const generateAppCode = async (
         }
     }
 
-    const data = JSON.parse(text);
+    // Attempt to parse
+    let data;
+    try {
+        data = JSON.parse(text);
+    } catch (e) {
+        console.error("JSON Parse failed. Attempting repair.", e);
+        // Simple repair: if it looks cut off at the end
+        if (text.trim().endsWith('"')) text += ']}'; 
+        else if (text.trim().endsWith('}')) { /* ok */ }
+        else text += '"}'; // Blind attempt
+        data = JSON.parse(text);
+    }
     
-    const screens = (data.screens as any[]).map(screen => ({
-        ...screen,
-        platform
+    // --- MEDIA PROCESSING STEP ---
+    const processedScreens = await Promise.all((data.screens as any[]).map(async (screen) => {
+        const processedWebCode = await processCodeWithMedia(screen.webCompatibleCode);
+        const processedNativeCode = await processCodeWithMedia(screen.reactNativeCode);
+        
+        return {
+            ...screen,
+            webCompatibleCode: processedWebCode,
+            reactNativeCode: processedNativeCode,
+            platform
+        };
     }));
 
     // Extract Grounding Metadata (Sources)
@@ -221,7 +250,7 @@ export const generateAppCode = async (
     }
 
     return {
-        screens: screens as GeneratedApp[],
+        screens: processedScreens as GeneratedApp[],
         explanation: data.projectExplanation as string,
         sources
     };
@@ -245,6 +274,10 @@ export const editAppCode = async (currentApp: GeneratedApp, userPrompt: string, 
     - If the user draws a box and says "add a chart here", redesign the layout to elegantly accommodate that chart.
     
     Design Aesthetic: Modern White, Pill buttons, Premium feel.
+    
+    MEDIA INSTRUCTIONS:
+    - Use "https://maxigen.media/image?q=..." for images.
+    - Use "https://maxigen.media/video?q=..." for video.
     
     If an image is provided:
     - It is a screenshot with annotations (red drawings, boxes).
@@ -286,7 +319,8 @@ export const editAppCode = async (currentApp: GeneratedApp, userPrompt: string, 
         systemInstruction,
         responseMimeType: "application/json",
         responseSchema: singleAppSchema, 
-        thinkingConfig: { thinkingBudget: 0 }
+        thinkingConfig: { thinkingBudget: 0 },
+        maxOutputTokens: 60000 
       },
     });
 
@@ -296,7 +330,17 @@ export const editAppCode = async (currentApp: GeneratedApp, userPrompt: string, 
     }
 
     const result = JSON.parse(text);
-    return { ...result, platform: currentApp.platform } as GeneratedApp;
+    
+    // Process media in edited code
+    const processedWebCode = await processCodeWithMedia(result.webCompatibleCode);
+    const processedNativeCode = await processCodeWithMedia(result.reactNativeCode);
+
+    return { 
+        ...result, 
+        webCompatibleCode: processedWebCode,
+        reactNativeCode: processedNativeCode,
+        platform: currentApp.platform 
+    } as GeneratedApp;
   } catch (error) {
     console.error("Error editing app:", error);
     throw error;

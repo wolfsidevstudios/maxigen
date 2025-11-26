@@ -14,11 +14,14 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({ code, refreshK
       const doc = iframeRef.current.contentDocument;
       if (!doc) return;
 
-      // Sanitize code: remove 'export default' to ensure App is in global scope
-      // and prevent module syntax errors in script tag
+      // Sanitize code: 
+      // 1. Remove imports (browsers can't handle them in standard scripts without maps)
+      // 2. Convert 'export default function App' -> 'window.App = function App'
+      // 3. Convert 'export default App' -> 'window.App = App'
       const safeCode = code
-        .replace(/export\s+default\s+App;?/g, '')
-        .replace(/export\s+default\s+function\s+App/g, 'function App');
+        .replace(/import\s+.*?from\s+['"].*?['"];?/g, '')
+        .replace(/export\s+default\s+function\s+App/g, 'window.App = function App')
+        .replace(/export\s+default\s+App/g, 'window.App = App');
 
       const html = `
         <!DOCTYPE html>
@@ -139,22 +142,18 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({ code, refreshK
               // Proxy that safely returns components, not objects
               window.LucideReact = new Proxy({}, {
                   get: (target, prop) => {
-                      // Skip symbols/react-internals
                       if (typeof prop !== 'string') return undefined;
                       if (prop === 'default') return target;
                       
-                      // Check for valid icon in lucide global
                       if (window.lucide && window.lucide.icons && window.lucide.icons[prop]) {
                           return createLucideIcon(prop, window.lucide.icons[prop]);
                       }
                       
-                      // Case insensitive lookup
                       const lowerKey = Object.keys(window.lucide?.icons || {}).find(k => k.toLowerCase() === prop.toLowerCase());
                       if (lowerKey) {
                            return createLucideIcon(lowerKey, window.lucide.icons[lowerKey]);
                       }
 
-                      // Fallback Icon Component
                       return ({ size = 24, ...props }) => React.createElement(
                           "svg",
                           { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", ...props },
@@ -173,15 +172,18 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({ code, refreshK
               ${safeCode}
               
               // Render
-              if (typeof App !== 'undefined') {
+              // Check both window.App (from sanitized export default) and global App (from const App)
+              const Component = window.App || (typeof App !== 'undefined' ? App : undefined);
+
+              if (Component) {
                  const root = ReactDOM.createRoot(document.getElementById('root'));
                  root.render(
                    <ErrorBoundary>
-                     <App />
+                     <Component />
                    </ErrorBoundary>
                  );
               } else {
-                 throw new Error("App component not defined. Ensure code defines 'const App = ...'");
+                 throw new Error("App component not defined. Code must define 'const App = ...' or 'export default function App'");
               }
 
             } catch (err) {
