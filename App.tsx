@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Zap, ArrowRight, Layout, MousePointer2, ZoomIn, ZoomOut, RotateCcw, Trash2, X, Pencil, Plus, Mic, AudioLines, ArrowUp, Smartphone, Monitor, Layers, PenTool, MousePointer, Square, Image as ImageIcon, Undo2, Redo2, MoreHorizontal, Sparkles, Copy, Bot, Link as LinkIcon, Palette, Globe } from 'lucide-react';
+import { Send, Loader2, Zap, ArrowRight, Layout, MousePointer2, ZoomIn, ZoomOut, RotateCcw, Trash2, X, Pencil, Plus, Mic, AudioLines, ArrowUp, Smartphone, Monitor, Layers, PenTool, MousePointer, Square, Image as ImageIcon, Undo2, Redo2, MoreHorizontal, Sparkles, Copy, Bot, Link as LinkIcon, Palette, Globe, Database, Cpu, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateAppCode, editAppCode } from './services/geminiService';
 import { speechToText } from './services/speechService';
@@ -9,6 +9,8 @@ import { Sidebar } from './components/Sidebar';
 import { ProjectsPage } from './components/ProjectsPage';
 import { AnnotationModal } from './components/AnnotationModal';
 import { AudioWave } from './components/AudioWave';
+import { IntegrationsModal } from './components/IntegrationsModal';
+import { Integration } from './services/integrationsService';
 import { ChatMessage, AppState, CanvasApp, Platform, Page, UserProfile, Project, GenerationMode } from './types';
 
 interface LandingPageProps {
@@ -17,27 +19,40 @@ interface LandingPageProps {
   setPlatform: (p: Platform) => void;
   generationMode: GenerationMode;
   setGenerationMode: (m: GenerationMode) => void;
+  onOpenIntegrations: () => void;
+  onUploadImage: () => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onSearch, platform, setPlatform, generationMode, setGenerationMode }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onSearch, platform, setPlatform, generationMode, setGenerationMode, onOpenIntegrations, onUploadImage }) => {
   const [text, setText] = useState('');
   const [referenceUrl, setReferenceUrl] = useState('');
   const [showMenu, setShowMenu] = useState(false);
+  const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const plusMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setShowMenu(false);
       }
+      if (plusMenuRef.current && !plusMenuRef.current.contains(event.target as Node)) {
+        setShowPlusMenu(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Expose image setter via global event or ref (simplified for now by just exposing the ref trigger)
+  // For the 'onUploadImage' prop to work, we need to wire it to the file input
+  useEffect(() => {
+      // Just a placeholder for parent control if needed
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -175,7 +190,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSearch, platform, setPlatfo
 
                   {/* Bottom Toolbar */}
                   <div className="flex items-center justify-between px-4 pb-2">
-                      <div className="flex items-center gap-1 text-zinc-400">
+                      <div className="flex items-center gap-1 text-zinc-400 relative">
                           <input 
                               type="file" 
                               ref={fileInputRef} 
@@ -183,17 +198,46 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSearch, platform, setPlatfo
                               accept="image/*"
                               onChange={handleFileSelect}
                           />
-                          <button 
-                            type="button" 
-                            onClick={() => fileInputRef.current?.click()} 
-                            className={`p-2 rounded-full transition-colors flex items-center gap-2 ${generationMode !== 'default' && !attachedImage ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'hover:bg-zinc-100 hover:text-zinc-600'}`} 
-                            title="Upload Reference Image"
-                          >
-                              <Plus size={20} />
-                              {(generationMode === 'redesign' || generationMode === 'copy') && !attachedImage && (
-                                  <span className="text-xs font-semibold whitespace-nowrap pr-2">Upload Image</span>
-                              )}
-                          </button>
+                          
+                          {/* PLUS BUTTON MENU */}
+                          <div className="relative" ref={plusMenuRef}>
+                            <button 
+                                type="button" 
+                                onClick={() => setShowPlusMenu(!showPlusMenu)}
+                                className={`p-2 rounded-full transition-colors flex items-center gap-2 ${showPlusMenu ? 'bg-zinc-900 text-white' : 'hover:bg-zinc-100 hover:text-zinc-600'}`} 
+                                title="Add Integration or Image"
+                            >
+                                <Plus size={20} />
+                            </button>
+                            
+                            <AnimatePresence>
+                                {showPlusMenu && (
+                                    <motion.div 
+                                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                                        className="absolute bottom-full left-0 mb-2 w-48 bg-white rounded-xl shadow-xl border border-zinc-200 overflow-hidden z-50 py-1"
+                                    >
+                                        <button 
+                                            type="button"
+                                            onClick={() => { setShowPlusMenu(false); onOpenIntegrations(); }}
+                                            className="w-full text-left px-4 py-3 flex items-center gap-2 text-sm hover:bg-zinc-50 text-zinc-700"
+                                        >
+                                            <Database size={16} className="text-purple-600" />
+                                            <span>Integrations</span>
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            onClick={() => { setShowPlusMenu(false); fileInputRef.current?.click(); }}
+                                            className="w-full text-left px-4 py-3 flex items-center gap-2 text-sm hover:bg-zinc-50 text-zinc-700"
+                                        >
+                                            <ImageIcon size={16} className="text-blue-600" />
+                                            <span>Upload Image</span>
+                                        </button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                          </div>
                           
                           <div className="w-px h-5 bg-zinc-200 mx-2"></div>
                           
@@ -335,6 +379,9 @@ export default function App() {
   const [showAnnotationModal, setShowAnnotationModal] = useState(false);
   const [pendingAttachment, setPendingAttachment] = useState<string | null>(null);
   
+  // Integrations State
+  const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
+  
   // Speech State
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
@@ -381,6 +428,12 @@ export default function App() {
       setZoom(1);
       setPan({x: 0, y: 0});
       setActivePage('home');
+  };
+
+  const handleAddIntegration = (integration: Integration) => {
+      const instruction = `\n\n[System: Add Functionality]\nIntegration: ${integration.name}\nDescription: ${integration.description}\nTechnical Context: ${integration.contextPrompt}`;
+      setInput(prev => prev + instruction);
+      setShowIntegrationsModal(false);
   };
 
   const processInput = async (text: string, image?: string, mode?: GenerationMode, url?: string) => {
@@ -581,8 +634,16 @@ export default function App() {
                     setPlatform={setPlatform} 
                     generationMode={generationMode}
                     setGenerationMode={setGenerationMode}
+                    onOpenIntegrations={() => setShowIntegrationsModal(true)}
+                    onUploadImage={() => {}}
                 />
             </div>
+            
+            <IntegrationsModal 
+                isOpen={showIntegrationsModal} 
+                onClose={() => setShowIntegrationsModal(false)}
+                onAdd={handleAddIntegration}
+            />
         </div>
       );
   }
@@ -600,6 +661,13 @@ export default function App() {
         onClose={() => setShowAnnotationModal(false)}
         apps={canvasApps}
         onCapture={handleAnnotationCapture}
+      />
+      
+      {/* INTEGRATIONS MODAL */}
+      <IntegrationsModal 
+         isOpen={showIntegrationsModal} 
+         onClose={() => setShowIntegrationsModal(false)}
+         onAdd={handleAddIntegration}
       />
 
       {/* CONTENT AREA */}
@@ -770,8 +838,13 @@ export default function App() {
                     />
                     
                     <div className="flex items-center justify-between px-3 pb-3">
-                        <div className="flex items-center gap-1">
-                            <button className="p-2 hover:bg-zinc-200 rounded-full text-zinc-500 transition-colors" title="Add Image">
+                        <div className="flex items-center gap-1 relative">
+                            {/* NEW PLUS DROPDOWN */}
+                            <button 
+                                onClick={() => setShowIntegrationsModal(true)}
+                                className="p-2 hover:bg-zinc-200 rounded-full text-zinc-500 transition-colors" 
+                                title="Add Integration"
+                            >
                                 <Plus size={18} />
                             </button>
                             

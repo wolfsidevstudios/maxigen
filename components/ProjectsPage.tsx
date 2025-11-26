@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { UserProfile, Project } from '../types';
-import { Edit2, Grid, MapPin, Link as LinkIcon, Smartphone, Monitor } from 'lucide-react';
+import { Edit2, Grid, MapPin, Link as LinkIcon, Smartphone, Monitor, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface ProjectsPageProps {
@@ -93,7 +94,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ profile, projects, o
             {projects.map((project) => (
                 <motion.div 
                     key={project.id} 
-                    className="aspect-square bg-zinc-100 relative group overflow-hidden cursor-pointer"
+                    className="aspect-square bg-zinc-100 relative group overflow-hidden cursor-pointer rounded-sm"
                     whileHover={{ opacity: 0.95 }}
                 >
                     {/* Placeholder for project thumbnail */}
@@ -101,9 +102,16 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ profile, projects, o
                         {project.platform === 'web' ? <Monitor size={48} strokeWidth={1} /> : <Smartphone size={48} strokeWidth={1} />}
                     </div>
                     
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white p-4 text-center">
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white p-4 text-center z-10">
                         <span className="font-bold text-sm">{project.name}</span>
                         <span className="text-xs opacity-75 mt-1">{project.lastEdited}</span>
+                    </div>
+
+                    {/* Settings Button */}
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                        <button className="p-1.5 bg-black/50 text-white rounded-full hover:bg-black hover:scale-105 transition-all">
+                            <Settings size={14} />
+                        </button>
                     </div>
                 </motion.div>
             ))}
