@@ -1,20 +1,27 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Rocket, Monitor, ArrowUp, Loader2, Play, Plus, Mic, Terminal, Code2, LayoutDashboard, Database, ImageIcon, Hammer } from 'lucide-react';
+import { Rocket, Monitor, ArrowUp, Loader2, Play, Plus, Mic, Terminal, Code2, LayoutDashboard, Database, ImageIcon, Hammer, RefreshCw } from 'lucide-react';
 import { generateAppCode, editAppCode } from '../services/geminiService';
-import { MobileSimulator } from './MobileSimulator';
-import { CodeViewer } from './CodeViewer';
 import { ConsoleViewer } from './ConsoleViewer';
 import { DashboardView } from './DashboardView';
-import { BrowserBar } from './BrowserBar';
 import { IntegrationsModal } from './IntegrationsModal';
 import { AudioWave } from './AudioWave';
 import { speechToText } from '../services/speechService';
 import { Integration } from '../services/integrationsService';
-import { GeneratedApp, AppState, ChatMessage } from '../types';
+import { GeneratedApp, AppState, ChatMessage, ProjectFile } from '../types';
 
-type Tab = 'preview' | 'code' | 'console' | 'dashboard';
+// Sandpack
+import {
+  SandpackProvider,
+  SandpackLayout,
+  SandpackPreview,
+  SandpackFileExplorer,
+  SandpackCodeEditor,
+  SandpackConsole,
+} from "@codesandbox/sandpack-react";
+
+type Tab = 'preview' | 'code' | 'dashboard';
 
 interface Log {
     type: 'info' | 'warn' | 'error' | 'success' | 'system';
@@ -148,19 +155,52 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated }) => {
   const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Sandpack files state
+  const [sandpackFiles, setSandpackFiles] = useState<Record<string, string>>({});
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Convert GeneratedApp files to Sandpack format
   useEffect(() => {
-      const handleMessage = (e: MessageEvent) => {
-          if (e.data && e.data.type === 'CONSOLE_LOG') {
-              setConsoleLogs(prev => [...prev, e.data.log]);
-          }
-      };
-      window.addEventListener('message', handleMessage);
-      return () => window.removeEventListener('message', handleMessage);
-  }, []);
+    if (app) {
+        let files: Record<string, string> = {};
+        
+        // Use multi-file structure if available
+        if (app.files && app.files.length > 0) {
+            app.files.forEach((file: ProjectFile) => {
+                let path = file.path;
+                // Normalize path to remove leading slash if present, Sandpack expects relative or root-relative
+                if (path.startsWith('/')) path = path.substring(1);
+                files[path] = file.content;
+            });
+        } else {
+            // Fallback for single file or legacy
+            files = {
+                "App.tsx": app.webCompatibleCode || app.reactNativeCode,
+            };
+        }
+        
+        // Ensure index.html exists for Tailwind
+        if (!files['public/index.html'] && !files['index.html']) {
+            files['public/index.html'] = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${app.name}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>`;
+        }
+
+        setSandpackFiles(files);
+    }
+  }, [app]);
 
   const handleAddIntegration = (integration: Integration, apiKey?: string, customOption?: string) => {
     let instruction = `\n\n[System: Add Functionality]\nIntegration: ${integration.name}\nDescription: ${integration.description}\nTechnical Context: ${integration.contextPrompt}`;
@@ -249,6 +289,19 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated }) => {
       );
   }
 
+  // Sandpack specific custom setup
+  const sandpackCustomSetup = {
+    dependencies: {
+        "lucide-react": "latest",
+        "framer-motion": "latest",
+        "clsx": "latest",
+        "tailwind-merge": "latest",
+        "firebase": "latest",
+        "@revenuecat/purchases-js": "latest",
+        "react-router-dom": "latest"
+    },
+  };
+
   return (
     <div className="flex-1 flex flex-col md:flex-row h-screen overflow-hidden bg-black">
       {/* LEFT PANEL */}
@@ -324,18 +377,58 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated }) => {
                         <div className="flex items-center gap-3"><div className="text-sm font-bold text-white">{app?.name}</div><div className="h-4 w-px bg-zinc-800" /><div className="flex items-center gap-1 text-xs text-zinc-500"><Monitor size={12} /><span>Web Build</span></div></div>
                         <div className="flex items-center gap-3"><button onClick={() => setActiveTab('dashboard')} className="bg-white text-black px-5 py-2 rounded-full text-xs font-bold shadow-sm hover:bg-zinc-200 transition-all flex items-center gap-2"><Rocket size={12} /> Publish</button></div>
                 </div>
-                <div className="flex-1 relative bg-black overflow-hidden">
-                    <div className="absolute inset-4 bg-zinc-900 rounded-xl shadow-sm border border-zinc-800 overflow-hidden flex flex-col">
-                            {activeTab === 'preview' && <BrowserBar url={deploymentUrl} onReload={() => setApp(app ? {...app} : null)} />}
-                            {activeTab === 'preview' && <div className="flex-1 relative"><MobileSimulator code={app?.webCompatibleCode || ''} /></div>}
-                            {activeTab === 'code' && <CodeViewer code={app?.reactNativeCode || ''} language="tsx" />}
-                            {activeTab === 'console' && <ConsoleViewer logs={consoleLogs} onClear={() => setConsoleLogs([])} />}
-                            {activeTab === 'dashboard' && app && <DashboardView app={app} onUpdateApp={(updates) => setApp({...app, ...updates})} onDeploySuccess={setDeploymentUrl} deploymentUrl={deploymentUrl} />}
-                    </div>
+                
+                <div className="flex-1 relative bg-zinc-900 overflow-hidden">
+                    
+                    {/* SANDPACK INTEGRATION */}
+                    {(activeTab === 'preview' || activeTab === 'code') && (
+                        <div className="absolute inset-0 z-10">
+                            <SandpackProvider
+                                template="vite-react"
+                                theme="dark"
+                                files={sandpackFiles}
+                                options={{
+                                    externalResources: ["https://cdn.tailwindcss.com"],
+                                    classes: {
+                                        "sp-wrapper": "h-full custom-scrollbar",
+                                        "sp-layout": "h-full custom-scrollbar",
+                                    },
+                                }}
+                                customSetup={sandpackCustomSetup}
+                            >
+                                <SandpackLayout className="h-full border-none rounded-none bg-zinc-900">
+                                    {activeTab === 'code' && (
+                                        <>
+                                            <SandpackFileExplorer className="h-full border-r border-zinc-800 bg-zinc-950" />
+                                            <SandpackCodeEditor 
+                                                showTabs
+                                                showLineNumbers
+                                                showInlineErrors
+                                                wrapContent
+                                                closableTabs
+                                                className="h-full" 
+                                            />
+                                        </>
+                                    )}
+                                    {activeTab === 'preview' && (
+                                        <SandpackPreview 
+                                            showNavigator 
+                                            showOpenInCodeSandbox={false}
+                                            showRefreshButton
+                                            className="h-full" 
+                                        />
+                                    )}
+                                </SandpackLayout>
+                            </SandpackProvider>
+                        </div>
+                    )}
+
+                    {activeTab === 'dashboard' && app && <DashboardView app={app} onUpdateApp={(updates) => setApp({...app, ...updates})} onDeploySuccess={setDeploymentUrl} deploymentUrl={deploymentUrl} />}
+                    
+                    {/* Tab Switcher */}
                     <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-zinc-900/90 backdrop-blur-md border border-zinc-800 shadow-xl rounded-full p-1.5 flex gap-1 z-30">
                         <button onClick={() => setActiveTab('preview')} className={`px-4 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'preview' ? 'bg-white text-black shadow-md' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><Play size={12} fill={activeTab === 'preview' ? "currentColor" : "none"} /> Preview</button>
                         <button onClick={() => setActiveTab('code')} className={`px-4 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'code' ? 'bg-white text-black shadow-md' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><Code2 size={12} /> Code</button>
-                        <button onClick={() => setActiveTab('console')} className={`px-4 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'console' ? 'bg-white text-black shadow-md' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><Terminal size={12} /> Console</button>
                         <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'dashboard' ? 'bg-white text-black shadow-md' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><LayoutDashboard size={12} /> Dashboard</button>
                     </div>
                 </div>

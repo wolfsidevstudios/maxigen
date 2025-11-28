@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Copy, Check, File, Folder, ChevronRight, ChevronDown } from 'lucide-react';
 import { ProjectFile } from '../types';
 
@@ -11,10 +11,16 @@ interface CodeViewerProps {
 
 export const CodeViewer: React.FC<CodeViewerProps> = ({ code, files, language }) => {
   const [copied, setCopied] = useState(false);
-  // Default to first file if available, otherwise use raw code prop
-  const [selectedFile, setSelectedFile] = useState<ProjectFile | null>(files && files.length > 0 ? files[0] : null);
+  const [selectedFile, setSelectedFile] = useState<ProjectFile | null>(null);
   
-  // If no files provided, fall back to simple view
+  // Update selected file when files prop changes or initial load
+  useEffect(() => {
+    if (files && files.length > 0) {
+        setSelectedFile(files[0]);
+    }
+  }, [files]);
+
+  // Fallback if no files or empty
   const displayCode = selectedFile ? selectedFile.content : code;
   const displayPath = selectedFile ? selectedFile.path : 'src/App.tsx';
 

@@ -1,5 +1,4 @@
 
-
 import { GoogleGenAI, Type, Schema, Part, Tool } from "@google/genai";
 import { GeneratedApp, Platform, GenerationMode, AIModel } from "../types";
 import { processCodeWithMedia } from "./mediaService";
@@ -17,7 +16,7 @@ const getAI = () => {
 const fileSchema: Schema = {
     type: Type.OBJECT,
     properties: {
-        path: { type: Type.STRING, description: "File path (e.g., 'src/components/Header.tsx')" },
+        path: { type: Type.STRING, description: "File path (e.g., '/src/components/Header.tsx' or '/package.json')" },
         content: { type: Type.STRING, description: "The full code content of the file." }
     },
     required: ["path", "content"]
@@ -30,7 +29,7 @@ const singleAppSchema: Schema = {
     files: {
         type: Type.ARRAY,
         items: fileSchema,
-        description: "The full project file structure (components, hooks, utils)."
+        description: "The full project file structure. MUST be populated for Web apps."
     },
     reactNativeCode: {
       type: Type.STRING,
@@ -38,7 +37,7 @@ const singleAppSchema: Schema = {
     },
     webCompatibleCode: {
       type: Type.STRING,
-      description: "A single-file, self-contained React component for the iframe preview. DO NOT use external imports except React/Lucide. Flatten components into this one file.",
+      description: "A single-file, self-contained React component for the legacy iframe preview. Still required for Mobile view.",
     },
     explanation: {
       type: Type.STRING,
@@ -110,20 +109,11 @@ export const generateAppCode = async (
     
     CORE GOAL: Generate a PRODUCTION-READY, MULTI-FILE project.
     
-    1. **Structure**: 
-       - Break the app into small, reusable components (e.g., 'src/components/Header.tsx', 'src/hooks/useAuth.ts').
-       - Return a 'files' array containing these files.
-       - ALSO generate a 'webCompatibleCode' string which is a SINGLE FILE version of the app (flattened) for instant preview in an iframe. This is critical.
-    
-    2. **Technologies**:
+    Technologies:
        - React (Functional Components, Hooks)
        - Tailwind CSS (Utility classes)
        - Lucide React (Icons)
        
-    3. **Functionality**:
-       - Use 'useState' and 'useEffect' for real logic.
-       - Mock data if no API is available.
-    
     MEDIA & IMAGES (MANDATORY):
     - NEVER use placeholder URLs like placehold.co.
     - USE THIS FORMAT FOR IMAGES: "https://maxigen.media/image?q=SEARCH_TERM" (e.g. "https://maxigen.media/image?q=modern office")
@@ -141,23 +131,7 @@ export const generateAppCode = async (
     ${revenueCatKey ? `
     - A valid RevenueCat API Key has been provided: "${revenueCatKey}".
     - YOU MUST IMPLEMENT REAL IN-APP PAYMENTS using the RevenueCat SDK.
-    
-    WEB IMPLEMENTATION:
-    - Use '@revenuecat/purchases-js'.
-    - Import: "import { Purchases } from '@revenuecat/purchases-js';"
-    - Initialize: "Purchases.configure('${revenueCatKey}', 'app_user_id');" inside a useEffect.
-    - Fetch Offerings: "const offerings = await Purchases.getOfferings();"
-    - Purchase: "await Purchases.purchasePackage(package);"
-    
-    MOBILE IMPLEMENTATION (React Native):
-    - Use 'react-native-purchases'.
-    - Import: "import Purchases from 'react-native-purchases';"
-    - Initialize: "Purchases.configure({ apiKey: '${revenueCatKey}' });"
-    
-    UI REQUIREMENTS:
-    - Create a 'Paywall' component or modal.
-    - List available packages (Monthly, Annual).
-    - Styling should be premium (highlight 'Most Popular').
+    - Use '@revenuecat/purchases-js' (Web) or 'react-native-purchases' (Mobile).
     ` : ''}
   `;
 
@@ -165,17 +139,20 @@ export const generateAppCode = async (
   const webInstructions = `
     PLATFORM: WEB (React TypeScript + Tailwind CSS)
     
-    DESIGN PHILOSOPHY:
+    IMPORTANT: You MUST generate a full file structure in the 'files' array.
+    
+    Required Files in 'files' array:
+    1. '/src/App.tsx' (Main entry)
+    2. '/src/index.css' (Tailwind directives: @tailwind base; @tailwind components; @tailwind utilities;)
+    3. '/src/components/...' (Break UI into small, reusable components)
+    4. '/package.json' (Dependencies: react, react-dom, lucide-react, framer-motion, firebase (if needed), @revenuecat/purchases-js (if needed))
+    
+    Design Philosophy:
     - Grid System: 8px grid.
     - Spacing: generous padding (p-6, p-8).
     - Cards: rounded-[28px], white bg, soft shadow-xl.
     - Typography: Inter font, clear hierarchy.
     - Colors: Zinc neutrals + Vibrant Accents (Violet/Blue/Orange).
-    
-    OUTPUT FORMAT:
-    1. 'files': Array of { path, content }. MUST include 'src/App.tsx', 'src/main.tsx', and 'src/index.css'.
-    2. 'webCompatibleCode': One giant file with all components defined internally for the previewer.
-    3. 'reactNativeCode': Can be the content of 'src/App.tsx' as a fallback.
   `;
 
   const mobileInstructions = `
@@ -266,11 +243,10 @@ export const editAppCode = async (currentApp: GeneratedApp, userPrompt: string, 
     Your output MUST include 'files' (the multi-file structure) AND 'webCompatibleCode' (the single-file preview).
     
     RULES:
-    - FUNCTIONALITY: Implement logic fully. State updates, list rendering, simulated fetch.
+    - MODIFY the 'files' array to reflect changes. split components if needed.
     - UI BOOST: rounded-[28px], padded images, soft shadows.
     - AUTH: Implement Firebase Auth if config provided.
     - PAYMENTS: Implement RevenueCat (Real SDK) if key provided: "${revenueCatKey || ''}".
-    - WEB: Use React DOM (div, span). NO React Native primitives.
     ${firebaseConfig ? `Config: ${firebaseConfig}` : ''}
   `;
   

@@ -14,7 +14,8 @@
     "lucide-react": "^0.292.0",
     "@google/genai": "*",
     "html2canvas": "^1.4.1",
-    "firebase": "^10.7.1"
+    "firebase": "^10.7.1",
+    "@codesandbox/sandpack-react": "^2.19.10"
   },
   "devDependencies": {
     "@types/react": "^18.2.37",
