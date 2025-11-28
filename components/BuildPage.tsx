@@ -3,7 +3,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Rocket, Monitor, ArrowUp, Loader2, Play, Plus, Mic, Code2, LayoutDashboard, Database, ImageIcon, Hammer, CheckCircle2, FileText, Layers, Zap } from 'lucide-react';
 import { generateAppCode, editAppCode, generateProjectPlan } from '../services/geminiService';
-import { ConsoleViewer } from './ConsoleViewer';
 import { DashboardView } from './DashboardView';
 import { IntegrationsModal } from './IntegrationsModal';
 import { AudioWave } from './AudioWave';
@@ -11,15 +10,8 @@ import { speechToText } from '../services/speechService';
 import { Integration } from '../services/integrationsService';
 import { GeneratedApp, AppState, ChatMessage, ProjectFile, ProjectPlan } from '../types';
 import { AdOverlay } from './AdOverlay';
-
-// Sandpack
-import {
-  SandpackProvider,
-  SandpackLayout,
-  SandpackPreview,
-  SandpackFileExplorer,
-  SandpackCodeEditor,
-} from "@codesandbox/sandpack-react";
+import { WebPreview } from './WebPreview';
+import { CodeViewer } from './CodeViewer';
 
 type Tab = 'preview' | 'code' | 'dashboard';
 
@@ -161,9 +153,6 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
   // Stored Prompt for Planning Phase
   const [originalPrompt, setOriginalPrompt] = useState('');
 
-  // Sandpack files state
-  const [sandpackFiles, setSandpackFiles] = useState<Record<string, string>>({});
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -174,50 +163,6 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
         if (onPromptHandled) onPromptHandled();
     }
   }, [initialPrompt]);
-
-  // Convert GeneratedApp files to Sandpack format
-  useEffect(() => {
-    if (app) {
-        let files: Record<string, string> = {};
-        
-        if (app.files && app.files.length > 0) {
-            app.files.forEach((file: ProjectFile) => {
-                let path = file.path;
-                if (path.startsWith('/')) path = path.substring(1);
-                
-                // Filter out npm config files since we are in static mode
-                if (['package.json', 'package-lock.json', 'yarn.lock', 'vite.config.js', 'vite.config.ts', 'tsconfig.json'].includes(path)) {
-                    return;
-                }
-                
-                files[path] = file.content;
-            });
-        } else {
-            // Fallback for single file code (assumed HTML in webCompatibleCode)
-            files = {
-                "index.html": app.webCompatibleCode || "<h1>No code generated</h1>",
-            };
-        }
-        
-        // Ensure index.html exists
-        if (!files['index.html']) {
-            files['index.html'] = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${app.name}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 flex items-center justify-center h-screen">
-    <h1 class="text-2xl font-bold">App generated, but index.html missing.</h1>
-</body>
-</html>`;
-        }
-
-        setSandpackFiles(files);
-    }
-  }, [app]);
 
   const handleAddIntegration = (integration: Integration, apiKey?: string, customOption?: string) => {
     let instruction = `\n\n[System: Add Functionality]\nIntegration: ${integration.name}\nDescription: ${integration.description}\nTechnical Context: ${integration.contextPrompt}`;
@@ -294,8 +239,6 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
       const prompt = promptToUse || originalPrompt;
       setState(AppState.GENERATING);
       setConsoleLogs([]); 
-      // Clear files to ensure fresh build
-      setSandpackFiles({}); 
 
       const firebaseConfig = localStorage.getItem('firebase_config') || undefined;
       const revenueCatKey = localStorage.getItem('revenuecat_key') || undefined;
@@ -325,13 +268,6 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
           </>
       );
   }
-
-  // Sandpack setup - STATIC TEMPLATE for HTML/JS
-  const sandpackCustomSetup = {
-    // No npm dependencies needed for static template usually, 
-    // but we can keep some generic ones if we switch back or for specific use cases.
-    dependencies: {}, 
-  };
 
   return (
     <div className="flex-1 flex flex-col md:flex-row h-screen overflow-hidden bg-black">
@@ -478,49 +414,22 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
                 
                 <div className="flex-1 relative bg-zinc-900 overflow-hidden">
                     
-                    {/* SANDPACK INTEGRATION - STATIC MODE */}
-                    {(activeTab === 'preview' || activeTab === 'code') && (
-                        <div className="absolute inset-0 z-10">
-                            <SandpackProvider
-                                template="static"
-                                theme="dark"
-                                files={sandpackFiles}
-                                style={{ height: '100%' }}
-                                options={{
-                                    externalResources: ["https://cdn.tailwindcss.com"],
-                                    classes: {
-                                        "sp-wrapper": "h-full custom-scrollbar",
-                                        "sp-layout": "h-full custom-scrollbar",
-                                    },
-                                }}
-                                customSetup={sandpackCustomSetup}
-                            >
-                                <SandpackLayout style={{ height: '100%' }} className="!h-full border-none rounded-none bg-zinc-900">
-                                    {activeTab === 'code' && (
-                                        <>
-                                            <SandpackFileExplorer className="h-full border-r border-zinc-800 bg-zinc-950" />
-                                            <SandpackCodeEditor 
-                                                showTabs
-                                                showLineNumbers
-                                                showInlineErrors
-                                                wrapContent
-                                                closableTabs
-                                                style={{ height: '100%' }}
-                                                className="h-full" 
-                                            />
-                                        </>
-                                    )}
-                                    {activeTab === 'preview' && (
-                                        <SandpackPreview 
-                                            showNavigator 
-                                            showOpenInCodeSandbox={false}
-                                            showRefreshButton
-                                            style={{ height: '100%' }}
-                                            className="h-full" 
-                                        />
-                                    )}
-                                </SandpackLayout>
-                            </SandpackProvider>
+                    {/* CUSTOM PREVIEW & CODE VIEWER */}
+                    {activeTab === 'preview' && (
+                        <WebPreview 
+                            files={app.files} 
+                            code={app.webCompatibleCode} 
+                            onConsole={(log) => setConsoleLogs(prev => [...prev, { ...log, type: log.type === 'info' ? 'info' : log.type === 'warn' ? 'warn' : 'error' }])} 
+                        />
+                    )}
+
+                    {activeTab === 'code' && (
+                        <div className="h-full">
+                             <CodeViewer 
+                                files={app.files} 
+                                code={app.webCompatibleCode} 
+                                language="html" 
+                             />
                         </div>
                     )}
 
