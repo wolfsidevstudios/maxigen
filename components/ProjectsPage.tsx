@@ -20,14 +20,14 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ profile, projects, o
   };
 
   return (
-    <div className="flex-1 h-screen overflow-y-auto bg-white custom-scrollbar">
+    <div className="flex-1 h-screen overflow-y-auto bg-black custom-scrollbar text-white">
       <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
         
         {/* Profile Header */}
         <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12 mb-16">
           {/* Avatar */}
-          <div className="w-24 h-24 md:w-32 md:h-32 rounded-full p-1 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600">
-            <div className="w-full h-full rounded-full border-2 border-white overflow-hidden bg-zinc-100">
+          <div className="w-24 h-24 md:w-32 md:h-32 rounded-full p-1 bg-gradient-to-tr from-yellow-500 via-red-500 to-purple-600">
+            <div className="w-full h-full rounded-full border-2 border-black overflow-hidden bg-zinc-900">
                 <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
             </div>
           </div>
@@ -35,24 +35,24 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ profile, projects, o
           {/* Info */}
           <div className="flex-1 flex flex-col items-center md:items-start gap-4">
             <div className="flex flex-col md:flex-row items-center gap-4">
-                <h1 className="text-2xl font-light text-zinc-900">{profile.handle}</h1>
+                <h1 className="text-2xl font-light text-white">{profile.handle}</h1>
                 <div className="flex gap-2">
                     {isEditing ? (
                         <>
-                            <button onClick={handleSave} className="px-4 py-1.5 bg-black text-white text-sm font-medium rounded-lg">Save</button>
-                            <button onClick={() => setIsEditing(false)} className="px-4 py-1.5 bg-zinc-100 text-zinc-900 text-sm font-medium rounded-lg">Cancel</button>
+                            <button onClick={handleSave} className="px-4 py-1.5 bg-white text-black text-sm font-medium rounded-lg">Save</button>
+                            <button onClick={() => setIsEditing(false)} className="px-4 py-1.5 bg-zinc-800 text-white text-sm font-medium rounded-lg">Cancel</button>
                         </>
                     ) : (
-                        <button onClick={() => setIsEditing(true)} className="px-4 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 text-sm font-medium rounded-lg transition-colors">Edit Profile</button>
+                        <button onClick={() => setIsEditing(true)} className="px-4 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-white text-sm font-medium rounded-lg transition-colors">Edit Profile</button>
                     )}
-                    <button className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 rounded-lg transition-colors"><SettingsIcon size={16} /></button>
+                    <button className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-white rounded-lg transition-colors"><SettingsIcon size={16} /></button>
                 </div>
             </div>
 
-            <div className="flex gap-8 text-sm md:text-base">
-                <div><span className="font-semibold">{projects.length}</span> projects</div>
-                <div><span className="font-semibold">0</span> followers</div>
-                <div><span className="font-semibold">0</span> following</div>
+            <div className="flex gap-8 text-sm md:text-base text-zinc-300">
+                <div><span className="font-semibold text-white">{projects.length}</span> projects</div>
+                <div><span className="font-semibold text-white">0</span> followers</div>
+                <div><span className="font-semibold text-white">0</span> following</div>
             </div>
 
             {isEditing ? (
@@ -60,17 +60,17 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ profile, projects, o
                     <input 
                         value={editForm.name} 
                         onChange={e => setEditForm({...editForm, name: e.target.value})}
-                        className="w-full border p-2 rounded text-sm" placeholder="Name"
+                        className="w-full bg-zinc-900 border border-zinc-800 p-2 rounded text-sm text-white outline-none focus:border-white" placeholder="Name"
                     />
                     <textarea 
                         value={editForm.bio} 
                         onChange={e => setEditForm({...editForm, bio: e.target.value})}
-                        className="w-full border p-2 rounded text-sm" placeholder="Bio"
+                        className="w-full bg-zinc-900 border border-zinc-800 p-2 rounded text-sm text-white outline-none focus:border-white" placeholder="Bio"
                     />
                 </div>
             ) : (
-                <div className="text-center md:text-left text-sm text-zinc-600">
-                    <div className="font-semibold text-zinc-900 mb-1">{profile.name}</div>
+                <div className="text-center md:text-left text-sm text-zinc-400">
+                    <div className="font-semibold text-white mb-1">{profile.name}</div>
                     <p className="whitespace-pre-wrap">{profile.bio}</p>
                 </div>
             )}
@@ -78,12 +78,12 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ profile, projects, o
         </div>
 
         {/* Tabs */}
-        <div className="border-t border-zinc-200 flex justify-center mb-6">
+        <div className="border-t border-zinc-800 flex justify-center mb-6">
             <div className="flex gap-12 -mt-px">
-                <button className="flex items-center gap-2 py-3 border-t border-black text-xs font-semibold tracking-widest uppercase">
+                <button className="flex items-center gap-2 py-3 border-t border-white text-xs font-semibold tracking-widest uppercase text-white">
                     <Grid size={12} /> Posts
                 </button>
-                <button className="flex items-center gap-2 py-3 border-t border-transparent text-zinc-400 text-xs font-semibold tracking-widest uppercase hover:text-zinc-600 transition-colors">
+                <button className="flex items-center gap-2 py-3 border-t border-transparent text-zinc-500 text-xs font-semibold tracking-widest uppercase hover:text-zinc-300 transition-colors">
                     <MapPin size={12} /> Saved
                 </button>
             </div>
@@ -94,15 +94,15 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ profile, projects, o
             {projects.map((project) => (
                 <motion.div 
                     key={project.id} 
-                    className="aspect-square bg-zinc-100 relative group overflow-hidden cursor-pointer rounded-sm"
+                    className="aspect-square bg-zinc-900 relative group overflow-hidden cursor-pointer rounded-sm border border-zinc-800"
                     whileHover={{ opacity: 0.95 }}
                 >
                     {/* Placeholder for project thumbnail */}
-                    <div className="w-full h-full flex items-center justify-center text-zinc-300 bg-zinc-50">
+                    <div className="w-full h-full flex items-center justify-center text-zinc-700 bg-zinc-900">
                         {project.platform === 'web' ? <Monitor size={48} strokeWidth={1} /> : <Smartphone size={48} strokeWidth={1} />}
                     </div>
                     
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white p-4 text-center z-10">
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white p-4 text-center z-10">
                         <span className="font-bold text-sm">{project.name}</span>
                         <span className="text-xs opacity-75 mt-1">{project.lastEdited}</span>
                     </div>
@@ -116,9 +116,9 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ profile, projects, o
                 </motion.div>
             ))}
             {projects.length === 0 && (
-                <div className="col-span-full py-20 text-center text-zinc-400">
-                    <div className="w-16 h-16 border-2 border-zinc-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Smartphone size={32} className="text-zinc-300" />
+                <div className="col-span-full py-20 text-center text-zinc-600">
+                    <div className="w-16 h-16 border-2 border-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Smartphone size={32} className="text-zinc-700" />
                     </div>
                     <p>No projects yet.</p>
                 </div>

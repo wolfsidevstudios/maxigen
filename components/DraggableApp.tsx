@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Smartphone, Code2, X, GripHorizontal, Maximize2, Minimize2, Pencil, Monitor } from 'lucide-react';
@@ -57,7 +58,7 @@ export const DraggableApp: React.FC<DraggableAppProps> = ({
       }}
       onPointerDown={() => onFocus(app.id)}
       style={{ x: app.x, y: app.y, position: 'absolute' }}
-      className={`draggable-app-container flex flex-col rounded-2xl bg-white overflow-hidden transition-shadow duration-200 ${widthClass}
+      className={`draggable-app-container flex flex-col rounded-[28px] bg-white overflow-hidden transition-shadow duration-200 ${widthClass}
         ${isSelected 
           ? 'ring-2 ring-blue-500 shadow-[0_0_40px_-10px_rgba(59,130,246,0.3)]' 
           : 'ring-1 ring-black/5 shadow-2xl'

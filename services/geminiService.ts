@@ -1,5 +1,6 @@
+
 import { GoogleGenAI, Type, Schema, Part, Tool } from "@google/genai";
-import { GeneratedApp, Platform, GenerationMode } from "../types";
+import { GeneratedApp, Platform, GenerationMode, AIModel } from "../types";
 import { processCodeWithMedia } from "./mediaService";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -10,11 +11,11 @@ const singleAppSchema: Schema = {
   properties: {
     reactNativeCode: {
       type: Type.STRING,
-      description: "The production-ready source code. If Platform is Mobile: React Native code. If Platform is Web: Standard React + Tailwind code (export default App).",
+      description: "The production-ready source code. If Platform is Web: Standard React + Tailwind code with ALL IMPORTS.",
     },
     webCompatibleCode: {
       type: Type.STRING,
-      description: "A functional React component for the iframe preview. DO NOT use imports. DO NOT use 'export default'. Define the main component GLOBALLY as 'const App = () => { ... }' or 'function App() { ... }'. Access icons via 'const { IconName } = LucideReact'. Use standard HTML tags (div, span, button) styled with Tailwind CSS.",
+      description: "A functional React component for the iframe preview. DO NOT use imports. DO NOT use 'export default'. Define the main component GLOBALLY as 'const App = () => { ... }'.",
     },
     explanation: {
       type: Type.STRING,
@@ -26,13 +27,13 @@ const singleAppSchema: Schema = {
     },
     icon: {
       type: Type.STRING,
-      description: "A beautiful, modern, colorful SVG string (<svg>...</svg>) representing this app. Do not include '```xml' tags. Just the raw SVG code. Size 24x24.",
+      description: "A beautiful, modern, colorful SVG string (<svg>...</svg>) representing this app.",
     }
   },
   required: ["reactNativeCode", "webCompatibleCode", "explanation", "name", "icon"],
 };
 
-// Schema for multiple app screens (used for New Generations)
+// Schema for multiple app screens + Edge Functions (used for New Generations)
 const multiAppSchema: Schema = {
   type: Type.OBJECT,
   properties: {
@@ -41,12 +42,31 @@ const multiAppSchema: Schema = {
       description: "A list of app screens/pages.",
       items: singleAppSchema
     },
+    edgeFunctions: {
+      type: Type.ARRAY,
+      description: "List of serverless backend functions needed for this app.",
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          name: { type: Type.STRING, description: "Function name (e.g. sendEmail)" },
+          trigger: { type: Type.STRING, enum: ["http", "schedule", "db_event"] },
+          code: { type: Type.STRING, description: "Node.js serverless function code (export default async function handler...)" },
+          description: { type: Type.STRING, description: "What this function does" }
+        },
+        required: ["name", "trigger", "code", "description"]
+      }
+    },
     projectExplanation: {
       type: Type.STRING,
       description: "A summary of the entire generated project.",
+    },
+    suggestedIntegrations: {
+      type: Type.ARRAY,
+      description: "A list of 3-5 technical integrations or datasets.",
+      items: { type: Type.STRING }
     }
   },
-  required: ["screens", "projectExplanation"],
+  required: ["screens", "projectExplanation", "suggestedIntegrations"],
 };
 
 export const generateAppCode = async (
@@ -54,205 +74,157 @@ export const generateAppCode = async (
     platform: Platform, 
     image?: string,
     mode: GenerationMode = 'default',
-    referenceUrl?: string
-): Promise<{ screens: GeneratedApp[], explanation: string, sources?: {title: string, uri: string}[] }> => {
+    referenceUrl?: string,
+    modelName: AIModel = 'gemini-2.5-flash',
+    firebaseConfig?: string,
+    revenueCatKey?: string
+): Promise<{ screens: GeneratedApp[], explanation: string, sources?: {title: string, uri: string}[], suggestedIntegrations?: string[], edgeFunctions?: any[] }> => {
   
   const commonRules = `
-    You are an expert Senior Developer and UI/UX Designer.
-    Your goal is to build production-ready applications.
+    You are an elite Senior Frontend Engineer and Product Designer.
     
-    Standard Design Requirements (Unless Overridden by 'Copy' mode):
-    - Theme: Modern White Theme. Clean, minimalist.
-    - Colors: Black (#000000) primary, White (#ffffff) background, Zinc (#f4f4f5) accents.
-    - Buttons: "Pill shaped" (rounded-full).
-    - Aesthetic: "Apple-like", premium, "AI vibe".
+    CORE PHILOSOPHY: "GO ABOVE AND BEYOND".
+    - Never build a "shell". Build a WORKING APP.
+    - Use 'useState' to store lists of data. Use 'setTimeout' to simulate loading.
+    - INTERACTIVITY IS KING.
     
-    MEDIA & IMAGES (CRITICAL):
-    - NEVER use generic placeholder URLs like 'via.placeholder.com' or 'example.com/image.jpg'.
-    - Use this SPECIAL FORMAT to request real media:
-       - Images: "https://maxigen.media/image?q=SEARCH_TERM"  (e.g., "https://maxigen.media/image?q=coffee shop interior")
-       - GIFs:   "https://maxigen.media/gif?q=SEARCH_TERM"    (e.g., "https://maxigen.media/gif?q=loading animation")
-       - Videos: "https://maxigen.media/video?q=SEARCH_TERM"  (e.g., "https://maxigen.media/video?q=nature relaxation")
-    - For Web Apps: Ensure layouts are SCROLLABLE. Use 'min-h-screen', 'overflow-y-auto', and plenty of content sections (Hero, Features, Testimonials, Footer) populated with these real images.
+    MEDIA & IMAGES (MANDATORY):
+    - NEVER use placeholder URLs like placehold.co.
+    - USE THIS FORMAT FOR IMAGES: "https://maxigen.media/image?q=SEARCH_TERM" (e.g. "https://maxigen.media/image?q=modern office")
+    - USE THIS FORMAT FOR VIDEO: "https://maxigen.media/video?q=SEARCH_TERM" (e.g. "https://maxigen.media/video?q=nature loop")
     
-    For EACH screen, you need to generate:
-    1. 'reactNativeCode': The copy-pasteable PRODUCTION code.
-    2. 'webCompatibleCode': The PREVIEW code for our internal iframe simulator.
-    3. 'icon': A unique, beautiful SVG icon for the app.
+    FIREBASE AUTHENTICATION:
+    ${firebaseConfig ? `
+    - A valid 'firebaseConfig' has been provided.
+    - YOU MUST IMPLEMENT AUTHENTICATION if the app requires user context.
+    - Use 'firebase/auth' SDK methods (getAuth, signInWithEmailAndPassword, etc).
+    - Initialize Firebase apps inside a useEffect to avoid double-init.
+    ` : `- If the user requests Auth but no config is provided, simulate it visually.`}
+
+    REVENUECAT PAYMENTS (MONETIZATION):
+    ${revenueCatKey ? `
+    - A valid RevenueCat API Key has been provided: "${revenueCatKey}".
+    - YOU MUST IMPLEMENT REAL IN-APP PAYMENTS using the RevenueCat SDK.
+    
+    WEB IMPLEMENTATION:
+    - Use '@revenuecat/purchases-js'.
+    - Import: "import { Purchases } from '@revenuecat/purchases-js';"
+    - Initialize: "Purchases.configure('${revenueCatKey}', 'app_user_id');" inside a useEffect.
+    - Fetch Offerings: "const offerings = await Purchases.getOfferings();"
+    - Purchase: "await Purchases.purchasePackage(package);"
+    
+    MOBILE IMPLEMENTATION (React Native):
+    - Use 'react-native-purchases'.
+    - Import: "import Purchases from 'react-native-purchases';"
+    - Initialize: "Purchases.configure({ apiKey: '${revenueCatKey}' });"
+    
+    UI REQUIREMENTS:
+    - Create a 'Paywall' component or modal.
+    - List available packages (Monthly, Annual).
+    - Styling should be premium (highlight 'Most Popular').
+    ` : ''}
+  `;
+
+  // --- WEB INSTRUCTIONS (FULL DESIGN SYSTEM) ---
+  const webInstructions = `
+    PLATFORM: WEB (React TypeScript + Tailwind CSS)
+    
+    CRITICAL RULE: DO NOT GENERATE REACT NATIVE CODE. Use standard HTML tags (div, span, h1, button, input) styled with Tailwind CSS.
+    
+    ARCHITECTURE: 
+    - Build a Single Page Application (SPA) contained within a single file.
+    - Use internal state ('activeTab', 'currentView') to manage navigation between "pages" (Dashboard, Settings, etc.).
+    
+    *** CORE DESIGN PHILOSOPHY ***
+    1. Layout and Spacing:
+       - Grid System: Use an 8px grid (Tailwind classes are based on 4px, so increments of 2).
+       - Generous Whitespace: Use 'p-6', 'p-8', 'gap-6', 'gap-8'. Avoid clutter.
+       - Card-Based Layouts: Group content in white cards ('bg-white') with 'rounded-[28px]' and subtle shadows ('shadow-sm' or 'shadow-lg').
+    
+    2. Color Palette:
+       - Light Mode Default: 'bg-zinc-50' for page background. 'text-zinc-900' for headings. 'text-zinc-500' for secondary text.
+       - Accents: Use 'blue-600', 'orange-500', or 'violet-600' for primary actions.
+       - Gradients: Use subtle gradients like 'bg-gradient-to-br from-orange-50 via-white to-pink-50'.
+    
+    3. Components and Elements:
+       - Buttons: Primary = Solid color, 'rounded-full', 'px-6 py-3'. Secondary = 'bg-white border border-zinc-200'.
+       - Inputs: 'bg-zinc-50', 'border-zinc-200', 'rounded-xl', 'focus:ring-2'.
+       - Icons: Use 'lucide-react'. Destructure them: 'const { Home, User } = LucideReact;'.
+    
+    4. Visual Effects:
+       - Radius: ENFORCE 'rounded-[28px]' for containers/cards and 'rounded-2xl' for inner elements.
+       - Glassmorphism: Use 'backdrop-blur-xl bg-white/80' for sticky headers or overlays.
+       - Shadows: Soft, diffused shadows ('shadow-xl shadow-black/5').
+    
+    *** SPECIFIC UI PATTERNS ***
+    
+    A. LANDING PAGES:
+       - Navigation: A TOP FLOATING PILL-SHAPED TASKBAR. (e.g., 'fixed top-6 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md rounded-full px-6 py-2 shadow-lg border border-white/20').
+       - Hero: Split layout. Left: "Welcome Back" login/signup form. Right: Testimonial card or branding.
+       - Style: 'bg-gradient-to-br from-orange-50 via-white to-pink-50'.
+    
+    B. DASHBOARDS:
+       - Sidebar: Fixed left, thin, white, clean icons.
+       - Header: Minimal, glassmorphic.
+       - Cards: Large stats cards, charts (visualize with bars/lines using divs), data tables with 'border-b border-zinc-100'.
+       - Layout: 'flex h-screen bg-zinc-50'.
+    
+    BACKEND (Edge Functions):
+    - If the app needs backend logic (Stripe, Email, Database), generate "Edge Functions" in the response schema.
   `;
 
   const mobileInstructions = `
     PLATFORM: MOBILE (React Native / Expo)
-    - Valid Expo React Native code (TypeScript). 
-    - Use 'lucide-react-native' for icons.
-    - Use 'StyleSheet', 'View', 'Text', 'TouchableOpacity', 'ScrollView', 'SafeAreaView'.
-    - Must export default App.
-    - Preview code: VISUAL SIMULATION using React DOM + Tailwind. NO IMPORTS. Define 'const App = ...' globally.
+    - Generate VALID Expo React Native code.
+    - Use <View>, <Text>, <TouchableOpacity>, <SafeAreaView>.
+    - Use 'lucide-react-native'.
+    - Preview Code: Simulate the mobile UI using React DOM + Tailwind (divs/spans that LOOK like mobile).
   `;
 
-  const webInstructions = `
-    PLATFORM: WEB (React + Tailwind)
-    - Standard React Functional Component.
-    - Use Tailwind CSS classes for styling.
-    - 'export default function App() { ... }'
-    - Preview code: NO IMPORTS. Define 'const App = ...' globally.
-    - LAYOUT: Ensure the page is long enough to scroll. Add padding, large images, and distinct sections.
-  `;
-
-  let modeSpecificInstructions = "";
-  let modelName = "gemini-2.5-flash"; // Default model
-  let tools: Tool[] | undefined = undefined;
-  let useJsonSchema = true;
-
-  if (mode === 'redesign') {
-      modeSpecificInstructions = `
-        MODE: REDESIGN
-        The user has provided a screenshot/image or a URL of an existing app/website.
-        Your task is to REDESIGN it to be significantly better, cleaner, and more modern.
-        
-        ${referenceUrl ? `Reference URL: ${referenceUrl}` : ''}
-        
-        1. Analyze the structure and functionality of the input.
-        2. Keep the core features/content.
-        3. UPGRADE the UI: Better spacing, modern typography, cleaner hierarchy, pill-shaped buttons.
-        4. Fix any obvious UX flaws.
-      `;
-  } else if (mode === 'copy') {
-      modeSpecificInstructions = `
-        MODE: COPY & DESIGN
-        The user has provided a reference design (Screenshot or URL) and a description of *their* new app.
-        
-        ${referenceUrl ? `Reference Style URL: ${referenceUrl}` : ''}
-        
-        1. EXTRACT the "Design System" from the reference image/URL (Colors, Fonts, Button Styles, Spacing, Border Radius, Shadows).
-        2. IGNORE the content of the reference image.
-        3. Apply that EXACT Design System to build the NEW app described in the prompt: "${prompt}".
-        
-        Example: If the reference image is "Spotify" (Dark mode, green accents), and the prompt is "A recipe app", build a Dark Mode Recipe App with green accents.
-      `;
-  } else if (mode === 'agentic') {
-      // AGENTIC MODE CONFIGURATION
-      modelName = "gemini-2.0-flash-exp"; 
-      tools = [{ googleSearch: {} }]; // Enable Search Grounding
-      useJsonSchema = false; // Disable strict schema when using Search
-      
-      modeSpecificInstructions = `
-        MODE: AGENTIC (RESEARCH & DESIGN)
-        Act as a WORLD-CLASS UI/UX Researcher and Architect.
-        
-        1. SEARCH GROUNDING: Use Google Search to find the absolute BEST real-world examples, design patterns, and case studies related to: "${prompt}".
-        2. ANALYZE: Read the search results to understand current trends, user expectations, and innovative features.
-        3. SYNTHESIZE: Combine these findings to design an app that is "Above and Beyond".
-        4. OUTPUT: You MUST return a VALID JSON object matching the standard schema provided below. Do not wrap it in markdown. Just the raw JSON.
-        
-        Schema Structure required:
-        {
-          "screens": [ ... ],
-          "projectExplanation": "..."
-        }
-      `;
-  } else {
-      modeSpecificInstructions = `
-        MODE: GENERATE (Default)
-        Build the app described in the prompt: "${prompt}".
-        ${image ? 'Use the attached image as a layout sketch or inspiration.' : ''}
-      `;
-  }
+  let modeSpecificInstructions = mode === 'redesign' 
+      ? `MODE: REDESIGN. Modernize the UI to 'Award Winning' standard. rounded-[28px].` 
+      : mode === 'copy' 
+      ? `MODE: COPY. Extract design system from reference.` 
+      : `MODE: GENERATE. Build a COMPLETE app.`;
 
   const systemInstruction = `
     ${commonRules}
     ${platform === 'web' ? webInstructions : mobileInstructions}
-    
     ${modeSpecificInstructions}
-    
-    CAPABILITY UPDATE: You can generate WHOLE APPS. 
-    - If the user asks for "a fitness app", generate multiple screens: e.g., "Welcome Screen", "Dashboard", "Workout View".
   `;
 
   const parts: Part[] = [{ text: prompt }];
-
-  if (image) {
-      parts.push({
-          inlineData: {
-              mimeType: 'image/png',
-              data: image
-          }
-      });
-  }
+  if (image) parts.push({ inlineData: { mimeType: 'image/png', data: image } });
 
   try {
+    let selectedModel = modelName as string;
+    if (selectedModel === 'gemini-2.5-pro') selectedModel = 'gemini-3-pro-preview';
+
     const response = await ai.models.generateContent({
-      model: modelName,
+      model: selectedModel,
       contents: { parts },
       config: {
         systemInstruction,
-        // Only apply strict JSON schema if NOT in Agentic mode (because Agentic uses Tools)
-        responseMimeType: useJsonSchema ? "application/json" : undefined,
-        responseSchema: useJsonSchema ? multiAppSchema : undefined,
-        tools: tools,
-        thinkingConfig: { thinkingBudget: 0 },
-        maxOutputTokens: 60000 // Increase token limit to prevent truncated JSON
+        responseMimeType: "application/json",
+        responseSchema: multiAppSchema,
+        maxOutputTokens: 60000
       },
     });
 
-    let text = response.text;
-    if (!text) {
-      throw new Error("No response from Gemini");
-    }
-
-    // Agentic Mode Handling: Extract JSON from potential Markdown text
-    if (mode === 'agentic' || !useJsonSchema) {
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            text = jsonMatch[0];
-        } else {
-            // Fallback: try to find start of json
-            const startIndex = text.indexOf('{');
-            const endIndex = text.lastIndexOf('}');
-            if (startIndex !== -1 && endIndex !== -1) {
-                text = text.substring(startIndex, endIndex + 1);
-            }
-        }
-    }
-
-    // Attempt to parse
-    let data;
-    try {
-        data = JSON.parse(text);
-    } catch (e) {
-        console.error("JSON Parse failed. Attempting repair.", e);
-        // Simple repair: if it looks cut off at the end
-        if (text.trim().endsWith('"')) text += ']}'; 
-        else if (text.trim().endsWith('}')) { /* ok */ }
-        else text += '"}'; // Blind attempt
-        data = JSON.parse(text);
-    }
+    const text = response.text || "{}";
+    let data = JSON.parse(text);
     
-    // --- MEDIA PROCESSING STEP ---
     const processedScreens = await Promise.all((data.screens as any[]).map(async (screen) => {
         const processedWebCode = await processCodeWithMedia(screen.webCompatibleCode);
         const processedNativeCode = await processCodeWithMedia(screen.reactNativeCode);
-        
-        return {
-            ...screen,
-            webCompatibleCode: processedWebCode,
-            reactNativeCode: processedNativeCode,
-            platform
-        };
+        return { ...screen, webCompatibleCode: processedWebCode, reactNativeCode: processedNativeCode, platform };
     }));
-
-    // Extract Grounding Metadata (Sources)
-    let sources: { title: string, uri: string }[] | undefined;
-    if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
-        sources = response.candidates[0].groundingMetadata.groundingChunks
-            .map((chunk: any) => chunk.web ? { title: chunk.web.title, uri: chunk.web.uri } : null)
-            .filter((s: any) => s !== null);
-    }
 
     return {
         screens: processedScreens as GeneratedApp[],
         explanation: data.projectExplanation as string,
-        sources
+        suggestedIntegrations: data.suggestedIntegrations,
+        edgeFunctions: data.edgeFunctions
     };
 
   } catch (error) {
@@ -261,86 +233,39 @@ export const generateAppCode = async (
   }
 };
 
-export const editAppCode = async (currentApp: GeneratedApp, userPrompt: string, image?: string): Promise<GeneratedApp> => {
+export const editAppCode = async (currentApp: GeneratedApp, userPrompt: string, image?: string, modelName: AIModel = 'gemini-2.5-flash', firebaseConfig?: string, revenueCatKey?: string): Promise<GeneratedApp> => {
   const systemInstruction = `
-    You are an expert Senior Developer. 
-    You are tasked with REDESIGNING an app screen based on a user request and visual annotations.
-    Platform: ${currentApp.platform === 'web' ? 'WEB (React + Tailwind)' : 'MOBILE (React Native)'}.
+    You are an expert Senior Developer.
+    TASK: UPDATE the existing app based on: "${userPrompt}".
+    Platform: ${currentApp.platform}.
     
-    IMPORTANT: 
-    - Do NOT feel constrained by the exact structure of the previous code. 
-    - You are free to COMPLETELY REWRITE the component to best fit the user's new request.
-    - Treat this as a "Version 2.0" or a "Redesign" rather than a small patch.
-    - If the user draws a box and says "add a chart here", redesign the layout to elegantly accommodate that chart.
-    
-    Design Aesthetic: Modern White, Pill buttons, Premium feel.
-    
-    MEDIA INSTRUCTIONS:
-    - Use "https://maxigen.media/image?q=..." for images.
-    - Use "https://maxigen.media/video?q=..." for video.
-    
-    If an image is provided:
-    - It is a screenshot with annotations (red drawings, boxes).
-    - Use these visual cues to understand WHERE to place elements or WHAT to change.
-    
-    Adhere to syntax rules:
-    - Preview Code: NO imports, const App = () => {}, use LucideReact global.
-    - Production Code: Valid full source code.
+    RULES:
+    - FUNCTIONALITY: Implement logic fully. State updates, list rendering, simulated fetch.
+    - UI BOOST: rounded-[28px], padded images, soft shadows.
+    - AUTH: Implement Firebase Auth if config provided.
+    - PAYMENTS: Implement RevenueCat (Real SDK) if key provided: "${revenueCatKey || ''}".
+    - WEB: Use React DOM (div, span). NO React Native primitives.
+    ${firebaseConfig ? `Config: ${firebaseConfig}` : ''}
   `;
-
-  const promptText = `
-    CURRENT APP NAME: ${currentApp.name}
-    
-    OLD CODE REFERENCE (For Context Only):
-    ${currentApp.webCompatibleCode}
-    
-    USER REQUEST:
-    "${userPrompt}"
-    
-    Generate the completely new/updated full JSON response.
-  `;
-
-  const parts: Part[] = [{ text: promptText }];
   
-  if (image) {
-    parts.push({
-        inlineData: {
-            mimeType: 'image/png',
-            data: image
-        }
-    });
-  }
+  const parts: Part[] = [{ text: `CURRENT CODE:\n${currentApp.webCompatibleCode}\n\nREQUEST: "${userPrompt}"` }];
+  if (image) parts.push({ inlineData: { mimeType: 'image/png', data: image } });
 
   try {
+    let selectedModel = modelName as string;
+    if (selectedModel === 'gemini-2.5-pro') selectedModel = 'gemini-3-pro-preview';
+
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: selectedModel,
       contents: { parts },
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: singleAppSchema, 
-        thinkingConfig: { thinkingBudget: 0 },
-        maxOutputTokens: 60000 
-      },
+      config: { systemInstruction, responseMimeType: "application/json", responseSchema: singleAppSchema, maxOutputTokens: 60000 },
     });
 
-    const text = response.text;
-    if (!text) {
-      throw new Error("No response from Gemini");
-    }
-
-    const result = JSON.parse(text);
-    
-    // Process media in edited code
+    const result = JSON.parse(response.text || "{}");
     const processedWebCode = await processCodeWithMedia(result.webCompatibleCode);
     const processedNativeCode = await processCodeWithMedia(result.reactNativeCode);
 
-    return { 
-        ...result, 
-        webCompatibleCode: processedWebCode,
-        reactNativeCode: processedNativeCode,
-        platform: currentApp.platform 
-    } as GeneratedApp;
+    return { ...result, webCompatibleCode: processedWebCode, reactNativeCode: processedNativeCode, platform: currentApp.platform, edgeFunctions: currentApp.edgeFunctions } as GeneratedApp;
   } catch (error) {
     console.error("Error editing app:", error);
     throw error;

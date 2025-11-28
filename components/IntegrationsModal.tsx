@@ -1,105 +1,215 @@
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { X, Search, Globe, Code2, Plus, Database, Cpu } from 'lucide-react';
-import { BROWSER_APIS, PUBLIC_APIS, Integration } from '../services/integrationsService';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Search, Globe, Code2, Plus, Database, Cpu, Server, Link as LinkIcon, Key, ExternalLink } from 'lucide-react';
+import { BROWSER_APIS, PUBLIC_APIS, MCP_INTEGRATIONS, CONNECTED_APPS, Integration } from '../services/integrationsService';
 
 interface IntegrationsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (integration: Integration) => void;
+  onAdd: (integration: Integration, apiKey?: string, customOption?: string) => void;
 }
 
 export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, onClose, onAdd }) => {
-  const [activeTab, setActiveTab] = useState<'browser' | 'public'>('public');
+  const [activeTab, setActiveTab] = useState<'browser' | 'public' | 'mcp' | 'connected'>('public');
   const [query, setQuery] = useState('');
+  const [selectedApp, setSelectedApp] = useState<Integration | null>(null);
+  const [apiKey, setApiKey] = useState('');
+  const [selectedOption, setSelectedOption] = useState('');
 
   if (!isOpen) return null;
 
-  const currentList = activeTab === 'browser' ? BROWSER_APIS : PUBLIC_APIS;
+  const getList = () => {
+      if (activeTab === 'browser') return BROWSER_APIS;
+      if (activeTab === 'mcp') return MCP_INTEGRATIONS;
+      if (activeTab === 'connected') return CONNECTED_APPS;
+      return PUBLIC_APIS;
+  }
+
+  const currentList = getList();
   const filteredList = currentList.filter(item => 
     item.name.toLowerCase().includes(query.toLowerCase()) || 
     item.description.toLowerCase().includes(query.toLowerCase())
   );
 
+  const handleAddClick = (item: Integration) => {
+      if (item.requiresKey) {
+          setSelectedApp(item);
+          setApiKey('');
+          if (item.options && item.options.length > 0) {
+              setSelectedOption(item.options[0].value);
+          } else {
+              setSelectedOption('');
+          }
+      } else {
+          onAdd(item);
+      }
+  };
+
+  const confirmApiKey = () => {
+      if (selectedApp && apiKey) {
+          onAdd(selectedApp, apiKey, selectedOption);
+          setSelectedApp(null);
+      }
+  };
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
       
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="relative w-full max-w-4xl bg-zinc-50 rounded-[32px] overflow-hidden flex flex-col max-h-[85vh] shadow-2xl"
+        className="relative w-full max-w-4xl bg-zinc-900 rounded-[32px] overflow-hidden flex flex-col max-h-[85vh] shadow-2xl border border-zinc-800"
       >
         {/* Header */}
-        <div className="bg-white px-8 py-6 border-b border-zinc-200 flex items-center justify-between sticky top-0 z-10">
+        <div className="bg-zinc-900 px-8 py-6 border-b border-zinc-800 flex items-center justify-between sticky top-0 z-10">
             <div>
-                <h2 className="text-2xl font-bold text-zinc-900">Add Integration</h2>
-                <p className="text-zinc-500 text-sm mt-1">Supercharge your app with ready-to-use APIs and functionality.</p>
+                <h2 className="text-2xl font-bold text-white">Add Integration</h2>
+                <p className="text-zinc-400 text-sm mt-1">Supercharge your app with ready-to-use APIs and functionality.</p>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-zinc-100 rounded-full text-zinc-400 hover:text-zinc-600 transition-colors">
+            <button onClick={onClose} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 hover:text-white transition-colors">
                 <X size={24} />
             </button>
         </div>
 
         {/* Tabs & Search */}
-        <div className="px-8 py-6 flex flex-col md:flex-row gap-4 justify-between items-center bg-zinc-50/50">
-            <div className="flex bg-white p-1 rounded-xl shadow-sm border border-zinc-200">
+        <div className="px-8 py-6 flex flex-col md:flex-row gap-4 justify-between items-center bg-zinc-950/50">
+            <div className="flex bg-zinc-900 p-1 rounded-xl shadow-sm border border-zinc-800 overflow-x-auto max-w-full">
                 <button 
                     onClick={() => setActiveTab('public')}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === 'public' ? 'bg-zinc-900 text-white shadow-md' : 'text-zinc-600 hover:bg-zinc-50'}`}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'public' ? 'bg-white text-black shadow-md' : 'text-zinc-500 hover:bg-zinc-800 hover:text-white'}`}
                 >
                     <Database size={16} /> Public Datasets
-                    <span className="bg-zinc-700/20 px-1.5 py-0.5 rounded text-[10px] ml-1">{PUBLIC_APIS.length}</span>
                 </button>
                 <button 
                     onClick={() => setActiveTab('browser')}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === 'browser' ? 'bg-zinc-900 text-white shadow-md' : 'text-zinc-600 hover:bg-zinc-50'}`}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'browser' ? 'bg-white text-black shadow-md' : 'text-zinc-500 hover:bg-zinc-800 hover:text-white'}`}
                 >
                     <Cpu size={16} /> Browser APIs
-                    <span className="bg-zinc-700/20 px-1.5 py-0.5 rounded text-[10px] ml-1">{BROWSER_APIS.length}</span>
+                </button>
+                <button 
+                    onClick={() => setActiveTab('mcp')}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'mcp' ? 'bg-white text-black shadow-md' : 'text-zinc-500 hover:bg-zinc-800 hover:text-white'}`}
+                >
+                    <Server size={16} /> MCP Servers
+                </button>
+                <button 
+                    onClick={() => setActiveTab('connected')}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'connected' ? 'bg-white text-black shadow-md' : 'text-zinc-500 hover:bg-zinc-800 hover:text-white'}`}
+                >
+                    <LinkIcon size={16} /> Connect Apps
                 </button>
             </div>
 
             <div className="relative w-full md:w-64">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
                 <input 
                     value={query}
                     onChange={e => setQuery(e.target.value)}
                     placeholder="Search APIs..."
-                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-black/5"
+                    className="w-full pl-9 pr-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-white/10 text-white"
                 />
             </div>
         </div>
 
         {/* Grid */}
-        <div className="flex-1 overflow-y-auto p-8 pt-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-8 pt-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 custom-scrollbar relative">
             {filteredList.map(item => (
-                <div key={item.id} className="bg-white border border-zinc-200 p-5 rounded-2xl hover:shadow-lg hover:border-zinc-300 transition-all group flex flex-col">
+                <div key={item.id} className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl hover:shadow-lg hover:border-zinc-700 transition-all group flex flex-col">
                     <div className="flex items-start justify-between mb-3">
-                        <div className={`p-2.5 rounded-xl ${activeTab === 'public' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
-                            {activeTab === 'public' ? <Globe size={20} /> : <Code2 size={20} />}
+                        <div className={`p-2.5 rounded-xl ${
+                            item.category === 'public_api' ? 'bg-blue-900/30 text-blue-400' : 
+                            item.category === 'browser' ? 'bg-purple-900/30 text-purple-400' :
+                            item.category === 'mcp' ? 'bg-amber-900/30 text-amber-400' :
+                            'bg-green-900/30 text-green-400'
+                        }`}>
+                            {item.category === 'public_api' && <Globe size={20} />}
+                            {item.category === 'browser' && <Code2 size={20} />}
+                            {item.category === 'mcp' && <Server size={20} />}
+                            {item.category === 'connected_app' && <LinkIcon size={20} />}
                         </div>
                     </div>
                     
-                    <h3 className="font-bold text-zinc-900 mb-1">{item.name}</h3>
-                    <p className="text-zinc-500 text-xs mb-4 line-clamp-2 leading-relaxed flex-1">{item.description}</p>
+                    <h3 className="font-bold text-white mb-1">{item.name}</h3>
+                    <p className="text-zinc-400 text-xs mb-4 line-clamp-2 leading-relaxed flex-1">{item.description}</p>
                     
                     <button 
-                        onClick={() => onAdd(item)}
-                        className="w-full py-2.5 bg-zinc-50 hover:bg-black hover:text-white border border-zinc-200 hover:border-black rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 mt-auto"
+                        onClick={() => handleAddClick(item)}
+                        className="w-full py-2.5 bg-zinc-950 hover:bg-white hover:text-black border border-zinc-800 hover:border-white rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 mt-auto text-zinc-300"
                     >
-                        <Plus size={14} /> Add to Prompt
+                        <Plus size={14} /> {item.requiresKey ? 'Connect' : 'Add to Prompt'}
                     </button>
                 </div>
             ))}
             
             {filteredList.length === 0 && (
-                <div className="col-span-full py-12 text-center text-zinc-400 flex flex-col items-center">
+                <div className="col-span-full py-12 text-center text-zinc-500 flex flex-col items-center">
                     <Search size={48} className="mb-4 opacity-20" />
                     <p>No integrations found matching "{query}"</p>
                 </div>
             )}
+
+            {/* API Key Modal Overlay */}
+            <AnimatePresence>
+                {selectedApp && (
+                    <motion.div 
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 z-20"
+                    >
+                        <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800 shadow-xl max-w-md w-full">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold text-lg text-white">Connect {selectedApp.name}</h3>
+                                <button onClick={() => setSelectedApp(null)} className="p-1 hover:bg-zinc-800 rounded-full text-zinc-400 hover:text-white"><X size={18}/></button>
+                            </div>
+                            <p className="text-xs text-zinc-400 mb-4">To use this integration, please provide your API Key. It will be added to the generated code securely.</p>
+                            
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2 mb-1">
+                                        <Key size={12} /> API Key
+                                    </label>
+                                    <input 
+                                        type="password" 
+                                        value={apiKey}
+                                        onChange={e => setApiKey(e.target.value)}
+                                        placeholder={`sk_...`}
+                                        className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-white/10 text-white"
+                                    />
+                                </div>
+                                {selectedApp.options && (
+                                    <div>
+                                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2 mb-1">
+                                            Select Model
+                                        </label>
+                                        <select 
+                                            value={selectedOption}
+                                            onChange={e => setSelectedOption(e.target.value)}
+                                            className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-white/10 appearance-none text-white"
+                                        >
+                                            {selectedApp.options.map(opt => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                                {selectedApp.keyUrl && (
+                                    <a href={selectedApp.keyUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-400 flex items-center gap-1 hover:underline">
+                                        Get your API Key here <ExternalLink size={10}/>
+                                    </a>
+                                )}
+                                <button 
+                                    onClick={confirmApiKey}
+                                    disabled={!apiKey}
+                                    className="w-full py-2.5 bg-white text-black rounded-xl text-sm font-bold disabled:opacity-50"
+                                >
+                                    Save & Add Integration
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
       </motion.div>
     </div>

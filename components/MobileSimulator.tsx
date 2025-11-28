@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 
 interface MobileSimulatorProps {
@@ -54,6 +55,30 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({ code, refreshK
           </style>
           
           <script>
+            // CONSOLE OVERRIDE FOR PARENT COMMUNICATION
+            (function() {
+              const oldLog = console.log;
+              const oldWarn = console.warn;
+              const oldError = console.error;
+              
+              function send(type, args) {
+                try {
+                  const msg = args.map(a => 
+                    typeof a === 'object' ? JSON.stringify(a) : String(a)
+                  ).join(' ');
+                  window.parent.postMessage({ type: 'CONSOLE_LOG', log: { type, msg } }, '*');
+                } catch(e) {}
+              }
+
+              console.log = function(...args) { oldLog.apply(console, args); send('info', args); };
+              console.warn = function(...args) { oldWarn.apply(console, args); send('warn', args); };
+              console.error = function(...args) { oldError.apply(console, args); send('error', args); };
+              
+              window.onerror = function(msg, url, line) {
+                send('error', [msg + ' (' + line + ')']);
+              };
+            })();
+
             tailwind.config = {
               theme: {
                 extend: {

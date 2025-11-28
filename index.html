@@ -14,8 +14,8 @@
     <style>
       body {
         font-family: 'Inter', sans-serif;
-        background-color: #ffffff;
-        color: #09090b;
+        background-color: #000000;
+        color: #ffffff;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         overflow: hidden; /* Prevent body scroll for canvas */
@@ -29,11 +29,73 @@
         background: transparent;
       }
       ::-webkit-scrollbar-thumb {
-        background: #e4e4e7;
+        background: #27272a;
         border-radius: 3px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #d4d4d8;
+        background: #3f3f46;
+      }
+
+      /* Glossy Button Style */
+      .glossy-button {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      
+      .glossy-button:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.25);
+        box-shadow: 0 0 15px rgba(255, 255, 255, 0.15);
+        transform: translateY(-1px);
+      }
+      
+      .glossy-button:active {
+        transform: translateY(0px);
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      /* Shimmer Input Wrapper */
+      .shimmer-input-wrapper {
+        position: relative;
+        border-radius: 1.75rem; /* rounded-[28px] */
+        padding: 1px; /* Border width */
+        background: #27272a; /* Default border color (zinc-800) */
+        overflow: hidden;
+      }
+
+      .shimmer-input-wrapper::before {
+        content: "";
+        position: absolute;
+        top: -150%;
+        left: -150%;
+        width: 400%;
+        height: 400%;
+        background: conic-gradient(from 0deg at 50% 50%, transparent 0deg, transparent 80deg, rgba(255,255,255,0.8) 100deg, transparent 120deg);
+        animation: rotate 3s linear infinite;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+      }
+
+      .shimmer-input-wrapper:hover::before {
+        opacity: 1;
+      }
+
+      .shimmer-input-content {
+        position: relative;
+        z-index: 10;
+        border-radius: inherit;
+        background: #09090b; /* zinc-950 */
+        height: 100%;
+        width: 100%;
+      }
+
+      @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
       }
     </style>
   <script type="importmap">

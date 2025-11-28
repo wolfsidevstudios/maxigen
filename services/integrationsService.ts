@@ -1,10 +1,14 @@
 
+
 export interface Integration {
   id: string;
   name: string;
   description: string;
-  category: 'browser' | 'public_api';
+  category: 'browser' | 'public_api' | 'mcp' | 'connected_app';
   contextPrompt: string;
+  requiresKey?: boolean;
+  keyUrl?: string;
+  options?: { label: string; value: string }[];
 }
 
 export const BROWSER_APIS: Integration[] = [
@@ -91,4 +95,48 @@ export const PUBLIC_APIS: Integration[] = [
   { id: 'wger', name: 'Wger Workout', description: 'Exercises.', category: 'public_api', contextPrompt: 'Use https://wger.de/api/v2/exercise/' },
   { id: 'animechan', name: 'AnimeChan', description: 'Anime quotes.', category: 'public_api', contextPrompt: 'Use https://animechan.xyz/api/random' },
   { id: 'met', name: 'Met Museum', description: 'Museum objects.', category: 'public_api', contextPrompt: 'Use https://collectionapi.metmuseum.org/public/collection/v1/objects' }
+];
+
+export const CONNECTED_APPS: Integration[] = [
+    { id: 'revenuecat', name: 'RevenueCat', description: 'In-app subscriptions and purchases.', category: 'connected_app', requiresKey: true, keyUrl: 'https://app.revenuecat.com/settings/api_keys', contextPrompt: 'Use @revenuecat/purchases-js for Web or react-native-purchases for Mobile. Initialize Purchases with the API key. Fetch offerings and display paywall.' },
+    { id: 'gemini', name: 'Google Gemini', description: 'Integrate Gemini models for AI features.', category: 'connected_app', requiresKey: true, keyUrl: 'https://aistudio.google.com/app/apikey', contextPrompt: 'Use GoogleGenAI SDK. Initialize with provided API key.', options: [ { label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' }, { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' }, { label: 'Gemini 3.0 Pro', value: 'gemini-3.0-pro' } ] },
+    { id: 'openai', name: 'OpenAI', description: 'GPT-4 and DALL-E models.', category: 'connected_app', requiresKey: true, keyUrl: 'https://platform.openai.com/api-keys', contextPrompt: 'Use OpenAI API via fetch("https://api.openai.com/v1/...") with bearer token.' },
+    { id: 'supabase', name: 'Supabase', description: 'Postgres DB, Auth, Realtime.', category: 'connected_app', requiresKey: true, keyUrl: 'https://supabase.com/dashboard/project/_/settings/api', contextPrompt: 'Use Supabase JS client or fetch calls to Supabase URL.' },
+    { id: 'firebase', name: 'Firebase', description: 'Google Auth, Firestore, Storage.', category: 'connected_app', requiresKey: true, keyUrl: 'https://console.firebase.google.com/', contextPrompt: 'Initialize Firebase app with config object.' },
+    { id: 'stripe', name: 'Stripe', description: 'Payments infrastructure.', category: 'connected_app', requiresKey: true, keyUrl: 'https://dashboard.stripe.com/apikeys', contextPrompt: 'Use Stripe.js for frontend payments.' },
+    { id: 'twilio', name: 'Twilio', description: 'SMS, Voice, and Video.', category: 'connected_app', requiresKey: true, keyUrl: 'https://console.twilio.com/', contextPrompt: 'Use Twilio API for communication.' },
+    { id: 'resend', name: 'Resend', description: 'Email delivery service.', category: 'connected_app', requiresKey: true, keyUrl: 'https://resend.com/api-keys', contextPrompt: 'Use Resend API to send emails.' },
+    { id: 'algolia', name: 'Algolia', description: 'Fast search APIs.', category: 'connected_app', requiresKey: true, keyUrl: 'https://dashboard.algolia.com/account/api-keys', contextPrompt: 'Use Algolia Search client.' },
+    { id: 'mapbox', name: 'Mapbox', description: 'Custom maps and location.', category: 'connected_app', requiresKey: true, keyUrl: 'https://account.mapbox.com/', contextPrompt: 'Use Mapbox GL JS.' },
+    { id: 'replicate', name: 'Replicate', description: 'Run AI models in cloud.', category: 'connected_app', requiresKey: true, keyUrl: 'https://replicate.com/account/api-tokens', contextPrompt: 'Call Replicate API for ML models.' },
+    { id: 'clerk', name: 'Clerk', description: 'Authentication and User Mgmt.', category: 'connected_app', requiresKey: true, keyUrl: 'https://dashboard.clerk.com/', contextPrompt: 'Use Clerk React SDK.' }
+];
+
+export const MCP_INTEGRATIONS: Integration[] = [
+    { id: 'mcp-fs', name: 'Filesystem', description: 'Read/Write access to local filesystem.', category: 'mcp', contextPrompt: 'Assume access to a Filesystem MCP server (listing, reading, writing files).' },
+    { id: 'mcp-git', name: 'Git', description: 'Git repository operations.', category: 'mcp', contextPrompt: 'Assume access to a Git MCP server (commit, push, log, diff).' },
+    { id: 'mcp-github', name: 'GitHub', description: 'GitHub API integration.', category: 'mcp', contextPrompt: 'Assume access to GitHub MCP server (issues, prs, search).' },
+    { id: 'mcp-postgres', name: 'PostgreSQL', description: 'Postgres database query tool.', category: 'mcp', contextPrompt: 'Assume access to PostgreSQL MCP server for SQL queries.' },
+    { id: 'mcp-sqlite', name: 'SQLite', description: 'Local SQLite database management.', category: 'mcp', contextPrompt: 'Assume access to SQLite MCP server for database operations.' },
+    { id: 'mcp-slack', name: 'Slack', description: 'Send/Read Slack messages.', category: 'mcp', contextPrompt: 'Assume access to Slack MCP server for channel communication.' },
+    { id: 'mcp-sentry', name: 'Sentry', description: 'Error tracking and monitoring.', category: 'mcp', contextPrompt: 'Assume access to Sentry MCP server for issue tracking.' },
+    { id: 'mcp-brave', name: 'Brave Search', description: 'Web search via Brave.', category: 'mcp', contextPrompt: 'Assume access to Brave Search MCP for web queries.' },
+    { id: 'mcp-gmaps', name: 'Google Maps', description: 'Location and places data.', category: 'mcp', contextPrompt: 'Assume access to Google Maps MCP server.' },
+    { id: 'mcp-gdrive', name: 'Google Drive', description: 'File management on Drive.', category: 'mcp', contextPrompt: 'Assume access to Google Drive MCP server.' },
+    { id: 'mcp-linear', name: 'Linear', description: 'Issue tracking for software teams.', category: 'mcp', contextPrompt: 'Assume access to Linear MCP for task management.' },
+    { id: 'mcp-jira', name: 'Jira', description: 'Project management via Jira.', category: 'mcp', contextPrompt: 'Assume access to Jira MCP server.' },
+    { id: 'mcp-notion', name: 'Notion', description: 'Notion pages and databases.', category: 'mcp', contextPrompt: 'Assume access to Notion MCP server.' },
+    { id: 'mcp-puppeteer', name: 'Puppeteer', description: 'Headless browser automation.', category: 'mcp', contextPrompt: 'Assume access to Puppeteer MCP for web scraping/testing.' },
+    { id: 'mcp-sequential', name: 'Sequential Thinking', description: 'Advanced reasoning steps.', category: 'mcp', contextPrompt: 'Use Sequential Thinking MCP for complex problem solving.' },
+    { id: 'mcp-time', name: 'Time', description: 'Time and timezone utilities.', category: 'mcp', contextPrompt: 'Use Time MCP for timezone calculations.' },
+    { id: 'mcp-weather', name: 'Weather', description: 'Real-time weather data.', category: 'mcp', contextPrompt: 'Use Weather MCP for forecasts.' },
+    { id: 'mcp-memory', name: 'Memory', description: 'Persistent memory storage.', category: 'mcp', contextPrompt: 'Use Memory MCP to store user preferences/facts.' },
+    { id: 'mcp-everything', name: 'Everything', description: 'Desktop file search.', category: 'mcp', contextPrompt: 'Use Everything MCP for fast local file search.' },
+    { id: 'mcp-stripe', name: 'Stripe', description: 'Payment processing status.', category: 'mcp', contextPrompt: 'Assume access to Stripe MCP for transaction data.' },
+    { id: 'mcp-obsidian', name: 'Obsidian', description: 'Markdown note management.', category: 'mcp', contextPrompt: 'Assume access to Obsidian MCP vault.' },
+    { id: 'mcp-discord', name: 'Discord', description: 'Discord bot integration.', category: 'mcp', contextPrompt: 'Assume access to Discord MCP server.' },
+    { id: 'mcp-vercel', name: 'Vercel', description: 'Deployment management.', category: 'mcp', contextPrompt: 'Assume access to Vercel MCP for deployments.' },
+    { id: 'mcp-aws', name: 'AWS', description: 'AWS resource management.', category: 'mcp', contextPrompt: 'Assume access to AWS MCP for cloud resources.' },
+    { id: 'mcp-cloudflare', name: 'Cloudflare', description: 'DNS and worker management.', category: 'mcp', contextPrompt: 'Assume access to Cloudflare MCP.' },
+    { id: 'mcp-docker', name: 'Docker', description: 'Container management.', category: 'mcp', contextPrompt: 'Assume access to Docker MCP for container ops.' }
 ];

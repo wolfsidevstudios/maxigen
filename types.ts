@@ -3,6 +3,17 @@ export type Platform = 'mobile' | 'web';
 
 export type GenerationMode = 'default' | 'redesign' | 'copy' | 'agentic';
 
+export type ViewMode = 'design' | 'prototype' | 'deploy';
+
+export type AIModel = 'gemini-2.5-flash' | 'gemini-2.5-pro' | 'gemini-3-pro-preview';
+
+export interface EdgeFunction {
+  name: string;
+  trigger: 'http' | 'schedule' | 'db_event';
+  code: string; // Node.js serverless code
+  description: string;
+}
+
 export interface GeneratedApp {
   reactNativeCode: string; // Serves as "Production Code" (React Native for Mobile, React DOM for Web)
   webCompatibleCode: string; // Serves as "Preview Code"
@@ -10,6 +21,7 @@ export interface GeneratedApp {
   name: string;
   platform: Platform;
   icon?: string; // SVG String
+  edgeFunctions?: EdgeFunction[];
 }
 
 export interface ChatMessage {
@@ -19,6 +31,7 @@ export interface ChatMessage {
   attachment?: string; // Base64 image
   timestamp: number;
   sources?: { title: string; uri: string }[];
+  suggestedIntegrations?: string[]; 
 }
 
 export enum AppState {
@@ -44,7 +57,7 @@ export interface BuildJob {
   createdAt: number;
 }
 
-export type Page = 'home' | 'projects' | 'settings';
+export type Page = 'home' | 'projects' | 'settings' | 'build';
 
 export interface UserProfile {
   name: string;
