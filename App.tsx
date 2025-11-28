@@ -1,4 +1,5 @@
 
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Zap, ArrowRight, Layout, MousePointer2, ZoomIn, ZoomOut, RotateCcw, Trash2, X, Pencil, Plus, Mic, AudioLines, ArrowUp, Smartphone, Monitor, Layers, PenTool, MousePointer, Square, Image as ImageIcon, Undo2, Redo2, MoreHorizontal, Sparkles, Copy, Bot, Link as LinkIcon, Palette, Globe, Database, Cpu, Settings, Play, Rocket } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,6 +15,7 @@ import { AudioWave } from './components/AudioWave';
 import { IntegrationsModal } from './components/IntegrationsModal';
 import { MobileSimulator } from './components/MobileSimulator';
 import { DeployView } from './components/DeployView';
+import { MarketingPage } from './components/MarketingPage';
 import { Integration } from './services/integrationsService';
 import { ChatMessage, AppState, CanvasApp, Platform, Page, UserProfile, Project, GenerationMode, ViewMode, AIModel, GeneratedApp } from './types';
 
@@ -354,7 +356,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSearch, platform, setPlatfo
 
 export default function App() {
   // Navigation & User State
-  const [activePage, setActivePage] = useState<Page>('home');
+  const [activePage, setActivePage] = useState<Page>('marketing');
   const [userProfile, setUserProfile] = useState<UserProfile>({
       name: "Designer",
       handle: "@designer_ai",
@@ -374,7 +376,6 @@ export default function App() {
   const [platform, setPlatform] = useState<Platform>('mobile');
   const [generationMode, setGenerationMode] = useState<GenerationMode>('default');
   const [viewMode, setViewMode] = useState<ViewMode>('design');
-  const [referenceUrl, setReferenceUrl] = useState('');
   
   // AI Configuration
   const [aiModel, setAiModel] = useState<AIModel>('gemini-2.5-flash');
@@ -488,7 +489,6 @@ export default function App() {
 
     if (!selectedAppId) {
         setGenerationMode('default');
-        setReferenceUrl('');
     }
 
     const firebaseConfig = localStorage.getItem('firebase_config') || undefined;
@@ -517,7 +517,7 @@ export default function App() {
         setState(AppState.SUCCESS);
 
       } else {
-        const { screens, explanation, sources, suggestedIntegrations } = await generateAppCode(text, platform, userMessage.attachment, usedMode, url || referenceUrl, aiModel, firebaseConfig, revenueCatKey);
+        const { screens, explanation, sources, suggestedIntegrations } = await generateAppCode(text, platform, userMessage.attachment, usedMode, url, aiModel, firebaseConfig, revenueCatKey);
         
         let startX = 100;
         let startY = 100;
@@ -655,6 +655,10 @@ export default function App() {
         e.currentTarget.releasePointerCapture(e.pointerId);
     }
   };
+
+  if (activePage === 'marketing') {
+      return <MarketingPage onGetStarted={() => setActivePage('home')} />;
+  }
 
   if (messages.length === 0 && canvasApps.length === 0 && activePage === 'home') {
       return (

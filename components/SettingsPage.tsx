@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AIModel } from '../types';
-import { Zap, Cpu, Star, CheckCircle2, Flame, Save, Key } from 'lucide-react';
+import { Zap, Cpu, Star, CheckCircle2, Flame, Save, Key, ExternalLink } from 'lucide-react';
 
 interface SettingsPageProps {
   currentModel: AIModel;
@@ -32,7 +32,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ currentModel, onMode
       localStorage.setItem('gemini_api_key', geminiKey);
       setShowSavedGemini(true);
       setTimeout(() => setShowSavedGemini(false), 2000);
-      // Force reload to apply new key to services if needed, or services will read from LS next time
   };
 
   const models: { id: AIModel; name: string; desc: string; icon: React.ReactNode }[] = [
@@ -62,42 +61,45 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ currentModel, onMode
         <h1 className="text-3xl font-bold text-white mb-2">Settings</h1>
         <p className="text-zinc-400 mb-10">Manage your AI preferences and app configuration.</p>
 
-        {/* AI Key Section */}
-        <div className="bg-zinc-900 rounded-2xl border border-zinc-800 shadow-sm overflow-hidden mb-8">
-           <div className="px-6 py-4 border-b border-zinc-800 bg-zinc-900 flex items-center justify-between">
-            <div>
-                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                    <Key size={18} className="text-emerald-500" />
-                    Gemini API Key
-                </h2>
-                <p className="text-sm text-zinc-400">Required to power the AI features of MaxiGen.</p>
+        {/* AI Key Section - Compact Pill Style */}
+        <div className="mb-10">
+            <div className="flex items-center justify-between mb-4 px-2">
+                <div>
+                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <Key size={18} className="text-emerald-500" />
+                        Gemini API Key
+                    </h2>
+                    <p className="text-sm text-zinc-400">Required to power the AI features of MaxiGen.</p>
+                </div>
+                {showSavedGemini && <span className="text-xs font-bold text-green-400 flex items-center gap-1 animate-pulse"><CheckCircle2 size={12}/> Saved</span>}
             </div>
-            {showSavedGemini && <span className="text-xs font-bold text-green-400 flex items-center gap-1"><CheckCircle2 size={12}/> Saved</span>}
-          </div>
-          <div className="p-6">
-             <div className="shimmer-input-wrapper">
-                 <div className="shimmer-input-content">
+
+            <div className="shimmer-input-wrapper shadow-2xl">
+                 <div className="shimmer-input-content p-2 flex items-center gap-2">
+                     <div className="pl-4 pr-2 text-zinc-500">
+                        <Key size={16} />
+                     </div>
                      <input
                         type="password"
                         value={geminiKey}
                         onChange={(e) => setGeminiKey(e.target.value)}
                         placeholder="Paste your Google Gemini API Key here..."
-                        className="w-full p-4 bg-transparent border-none rounded-xl font-mono text-sm outline-none text-white"
+                        className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-zinc-600 h-10 text-sm font-mono"
                      />
+                     <div className="flex items-center gap-2 pr-1">
+                         <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="hidden sm:flex items-center gap-1 px-3 py-1.5 text-zinc-500 hover:text-white transition-colors text-xs font-medium whitespace-nowrap rounded-lg hover:bg-zinc-800">
+                             Get Key <ExternalLink size={10} />
+                         </a>
+                         <div className="w-px h-6 bg-zinc-800 hidden sm:block"></div>
+                         <button 
+                            onClick={handleSaveGemini}
+                            className="h-9 px-6 bg-white hover:bg-zinc-200 text-black rounded-full font-bold text-sm transition-all shadow-lg shadow-white/10 active:scale-95 whitespace-nowrap"
+                         >
+                             Save
+                         </button>
+                     </div>
                  </div>
              </div>
-             <div className="mt-4 flex justify-between items-center">
-                 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-xs text-zinc-500 hover:text-white underline">
-                     Get your API Key from Google AI Studio
-                 </a>
-                 <button 
-                    onClick={handleSaveGemini}
-                    className="bg-white text-black px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-zinc-200 transition-colors"
-                 >
-                     <Save size={16} /> Save Key
-                 </button>
-             </div>
-          </div>
         </div>
 
         {/* Models Section */}

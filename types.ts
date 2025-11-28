@@ -1,4 +1,5 @@
 
+
 export type Platform = 'mobile' | 'web';
 
 export type GenerationMode = 'default' | 'redesign' | 'copy' | 'agentic';
@@ -14,9 +15,15 @@ export interface EdgeFunction {
   description: string;
 }
 
+export interface ProjectFile {
+    path: string; // e.g., "src/components/Button.tsx"
+    content: string;
+}
+
 export interface GeneratedApp {
-  reactNativeCode: string; // Serves as "Production Code" (React Native for Mobile, React DOM for Web)
-  webCompatibleCode: string; // Serves as "Preview Code"
+  reactNativeCode: string; // Legacy field, now used as fallback or main entry
+  webCompatibleCode: string; // Single-file preview version
+  files?: ProjectFile[]; // New Multi-file structure
   explanation: string;
   name: string;
   platform: Platform;
@@ -57,7 +64,7 @@ export interface BuildJob {
   createdAt: number;
 }
 
-export type Page = 'home' | 'projects' | 'settings' | 'build';
+export type Page = 'marketing' | 'home' | 'projects' | 'settings' | 'build';
 
 export interface UserProfile {
   name: string;

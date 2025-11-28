@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Type, Schema, Part, Tool } from "@google/genai";
 import { GeneratedApp, Platform, GenerationMode, AIModel } from "../types";
 import { processCodeWithMedia } from "./mediaService";
@@ -12,17 +13,32 @@ const getAI = () => {
   return new GoogleGenAI({ apiKey: apiKey || '' });
 };
 
+// Common File Schema
+const fileSchema: Schema = {
+    type: Type.OBJECT,
+    properties: {
+        path: { type: Type.STRING, description: "File path (e.g., 'src/components/Header.tsx')" },
+        content: { type: Type.STRING, description: "The full code content of the file." }
+    },
+    required: ["path", "content"]
+};
+
 // Schema for a single app screen (used for Editing)
 const singleAppSchema: Schema = {
   type: Type.OBJECT,
   properties: {
+    files: {
+        type: Type.ARRAY,
+        items: fileSchema,
+        description: "The full project file structure (components, hooks, utils)."
+    },
     reactNativeCode: {
       type: Type.STRING,
-      description: "The production-ready source code. If Platform is Web: Standard React + Tailwind code with ALL IMPORTS.",
+      description: "Legacy/Backup: The main entry point code (e.g., App.tsx) as a single file.",
     },
     webCompatibleCode: {
       type: Type.STRING,
-      description: "A functional React component for the iframe preview. DO NOT use imports. DO NOT use 'export default'. Define the main component GLOBALLY as 'const App = () => { ... }'.",
+      description: "A single-file, self-contained React component for the iframe preview. DO NOT use external imports except React/Lucide. Flatten components into this one file.",
     },
     explanation: {
       type: Type.STRING,
@@ -37,7 +53,7 @@ const singleAppSchema: Schema = {
       description: "A beautiful, modern, colorful SVG string (<svg>...</svg>) representing this app.",
     }
   },
-  required: ["reactNativeCode", "webCompatibleCode", "explanation", "name", "icon"],
+  required: ["files", "reactNativeCode", "webCompatibleCode", "explanation", "name", "icon"],
 };
 
 // Schema for multiple app screens + Edge Functions (used for New Generations)
@@ -90,12 +106,23 @@ export const generateAppCode = async (
   const ai = getAI();
   
   const commonRules = `
-    You are an elite Senior Frontend Engineer and Product Designer.
+    You are an elite Senior Frontend Engineer.
     
-    CORE PHILOSOPHY: "GO ABOVE AND BEYOND".
-    - Never build a "shell". Build a WORKING APP.
-    - Use 'useState' to store lists of data. Use 'setTimeout' to simulate loading.
-    - INTERACTIVITY IS KING.
+    CORE GOAL: Generate a PRODUCTION-READY, MULTI-FILE project.
+    
+    1. **Structure**: 
+       - Break the app into small, reusable components (e.g., 'src/components/Header.tsx', 'src/hooks/useAuth.ts').
+       - Return a 'files' array containing these files.
+       - ALSO generate a 'webCompatibleCode' string which is a SINGLE FILE version of the app (flattened) for instant preview in an iframe. This is critical.
+    
+    2. **Technologies**:
+       - React (Functional Components, Hooks)
+       - Tailwind CSS (Utility classes)
+       - Lucide React (Icons)
+       
+    3. **Functionality**:
+       - Use 'useState' and 'useEffect' for real logic.
+       - Mock data if no API is available.
     
     MEDIA & IMAGES (MANDATORY):
     - NEVER use placeholder URLs like placehold.co.
@@ -138,48 +165,17 @@ export const generateAppCode = async (
   const webInstructions = `
     PLATFORM: WEB (React TypeScript + Tailwind CSS)
     
-    CRITICAL RULE: DO NOT GENERATE REACT NATIVE CODE. Use standard HTML tags (div, span, h1, button, input) styled with Tailwind CSS.
+    DESIGN PHILOSOPHY:
+    - Grid System: 8px grid.
+    - Spacing: generous padding (p-6, p-8).
+    - Cards: rounded-[28px], white bg, soft shadow-xl.
+    - Typography: Inter font, clear hierarchy.
+    - Colors: Zinc neutrals + Vibrant Accents (Violet/Blue/Orange).
     
-    ARCHITECTURE: 
-    - Build a Single Page Application (SPA) contained within a single file.
-    - Use internal state ('activeTab', 'currentView') to manage navigation between "pages" (Dashboard, Settings, etc.).
-    
-    *** CORE DESIGN PHILOSOPHY ***
-    1. Layout and Spacing:
-       - Grid System: Use an 8px grid (Tailwind classes are based on 4px, so increments of 2).
-       - Generous Whitespace: Use 'p-6', 'p-8', 'gap-6', 'gap-8'. Avoid clutter.
-       - Card-Based Layouts: Group content in white cards ('bg-white') with 'rounded-[28px]' and subtle shadows ('shadow-sm' or 'shadow-lg').
-    
-    2. Color Palette:
-       - Light Mode Default: 'bg-zinc-50' for page background. 'text-zinc-900' for headings. 'text-zinc-500' for secondary text.
-       - Accents: Use 'blue-600', 'orange-500', or 'violet-600' for primary actions.
-       - Gradients: Use subtle gradients like 'bg-gradient-to-br from-orange-50 via-white to-pink-50'.
-    
-    3. Components and Elements:
-       - Buttons: Primary = Solid color, 'rounded-full', 'px-6 py-3'. Secondary = 'bg-white border border-zinc-200'.
-       - Inputs: 'bg-zinc-50', 'border-zinc-200', 'rounded-xl', 'focus:ring-2'.
-       - Icons: Use 'lucide-react'. Destructure them: 'const { Home, User } = LucideReact;'.
-    
-    4. Visual Effects:
-       - Radius: ENFORCE 'rounded-[28px]' for containers/cards and 'rounded-2xl' for inner elements.
-       - Glassmorphism: Use 'backdrop-blur-xl bg-white/80' for sticky headers or overlays.
-       - Shadows: Soft, diffused shadows ('shadow-xl shadow-black/5').
-    
-    *** SPECIFIC UI PATTERNS ***
-    
-    A. LANDING PAGES:
-       - Navigation: A TOP FLOATING PILL-SHAPED TASKBAR. (e.g., 'fixed top-6 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md rounded-full px-6 py-2 shadow-lg border border-white/20').
-       - Hero: Split layout. Left: "Welcome Back" login/signup form. Right: Testimonial card or branding.
-       - Style: 'bg-gradient-to-br from-orange-50 via-white to-pink-50'.
-    
-    B. DASHBOARDS:
-       - Sidebar: Fixed left, thin, white, clean icons.
-       - Header: Minimal, glassmorphic.
-       - Cards: Large stats cards, charts (visualize with bars/lines using divs), data tables with 'border-b border-zinc-100'.
-       - Layout: 'flex h-screen bg-zinc-50'.
-    
-    BACKEND (Edge Functions):
-    - If the app needs backend logic (Stripe, Email, Database), generate "Edge Functions" in the response schema.
+    OUTPUT FORMAT:
+    1. 'files': Array of { path, content }. MUST include 'src/App.tsx', 'src/main.tsx', and 'src/index.css'.
+    2. 'webCompatibleCode': One giant file with all components defined internally for the previewer.
+    3. 'reactNativeCode': Can be the content of 'src/App.tsx' as a fallback.
   `;
 
   const mobileInstructions = `
@@ -187,7 +183,8 @@ export const generateAppCode = async (
     - Generate VALID Expo React Native code.
     - Use <View>, <Text>, <TouchableOpacity>, <SafeAreaView>.
     - Use 'lucide-react-native'.
-    - Preview Code: Simulate the mobile UI using React DOM + Tailwind (divs/spans that LOOK like mobile).
+    - 'files' should include 'App.tsx' and components in 'src/'.
+    - 'webCompatibleCode': Simulate the mobile UI using React DOM (divs that look like views).
   `;
 
   let modeSpecificInstructions = mode === 'redesign' 
@@ -226,7 +223,23 @@ export const generateAppCode = async (
     const processedScreens = await Promise.all((data.screens as any[]).map(async (screen) => {
         const processedWebCode = await processCodeWithMedia(screen.webCompatibleCode);
         const processedNativeCode = await processCodeWithMedia(screen.reactNativeCode);
-        return { ...screen, webCompatibleCode: processedWebCode, reactNativeCode: processedNativeCode, platform };
+        
+        // Process files if they exist
+        let processedFiles = screen.files;
+        if (processedFiles && Array.isArray(processedFiles)) {
+             processedFiles = await Promise.all(processedFiles.map(async (f: any) => ({
+                 ...f,
+                 content: await processCodeWithMedia(f.content)
+             })));
+        }
+
+        return { 
+            ...screen, 
+            webCompatibleCode: processedWebCode, 
+            reactNativeCode: processedNativeCode, 
+            files: processedFiles,
+            platform 
+        };
     }));
 
     return {
@@ -250,6 +263,8 @@ export const editAppCode = async (currentApp: GeneratedApp, userPrompt: string, 
     TASK: UPDATE the existing app based on: "${userPrompt}".
     Platform: ${currentApp.platform}.
     
+    Your output MUST include 'files' (the multi-file structure) AND 'webCompatibleCode' (the single-file preview).
+    
     RULES:
     - FUNCTIONALITY: Implement logic fully. State updates, list rendering, simulated fetch.
     - UI BOOST: rounded-[28px], padded images, soft shadows.
@@ -259,7 +274,12 @@ export const editAppCode = async (currentApp: GeneratedApp, userPrompt: string, 
     ${firebaseConfig ? `Config: ${firebaseConfig}` : ''}
   `;
   
-  const parts: Part[] = [{ text: `CURRENT CODE:\n${currentApp.webCompatibleCode}\n\nREQUEST: "${userPrompt}"` }];
+  // Send current file structure if available, otherwise code
+  const context = currentApp.files 
+    ? `CURRENT FILES:\n${JSON.stringify(currentApp.files)}`
+    : `CURRENT CODE:\n${currentApp.webCompatibleCode}`;
+
+  const parts: Part[] = [{ text: `${context}\n\nREQUEST: "${userPrompt}"` }];
   if (image) parts.push({ inlineData: { mimeType: 'image/png', data: image } });
 
   try {
@@ -275,8 +295,23 @@ export const editAppCode = async (currentApp: GeneratedApp, userPrompt: string, 
     const result = JSON.parse(response.text || "{}");
     const processedWebCode = await processCodeWithMedia(result.webCompatibleCode);
     const processedNativeCode = await processCodeWithMedia(result.reactNativeCode);
+    
+    let processedFiles = result.files;
+    if (processedFiles && Array.isArray(processedFiles)) {
+            processedFiles = await Promise.all(processedFiles.map(async (f: any) => ({
+                ...f,
+                content: await processCodeWithMedia(f.content)
+            })));
+    }
 
-    return { ...result, webCompatibleCode: processedWebCode, reactNativeCode: processedNativeCode, platform: currentApp.platform, edgeFunctions: currentApp.edgeFunctions } as GeneratedApp;
+    return { 
+        ...result, 
+        webCompatibleCode: processedWebCode, 
+        reactNativeCode: processedNativeCode,
+        files: processedFiles,
+        platform: currentApp.platform, 
+        edgeFunctions: currentApp.edgeFunctions 
+    } as GeneratedApp;
   } catch (error) {
     console.error("Error editing app:", error);
     throw error;

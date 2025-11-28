@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Search, Globe, Code2, Plus, Database, Cpu, Server, Link as LinkIcon, Key, ExternalLink } from 'lucide-react';
+import { X, Search, Globe, Code2, Plus, Database, Cpu, Server, Link as LinkIcon, Key, ExternalLink, ChevronDown } from 'lucide-react';
 import { BROWSER_APIS, PUBLIC_APIS, MCP_INTEGRATIONS, CONNECTED_APPS, Integration } from '../services/integrationsService';
 
 interface IntegrationsModalProps {
@@ -150,63 +150,77 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
                 </div>
             )}
 
-            {/* API Key Modal Overlay */}
+            {/* API Key Modal Overlay - Compact Pill Bar */}
             <AnimatePresence>
                 {selectedApp && (
                     <motion.div 
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 z-20"
+                        className="absolute inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4"
+                        onClick={() => setSelectedApp(null)}
                     >
-                        <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800 shadow-xl max-w-md w-full">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-bold text-lg text-white">Connect {selectedApp.name}</h3>
-                                <button onClick={() => setSelectedApp(null)} className="p-1 hover:bg-zinc-800 rounded-full text-zinc-400 hover:text-white"><X size={18}/></button>
-                            </div>
-                            <p className="text-xs text-zinc-400 mb-4">To use this integration, please provide your API Key. It will be added to the generated code securely.</p>
-                            
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2 mb-1">
-                                        <Key size={12} /> API Key
-                                    </label>
+                        <motion.div 
+                            initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
+                            onClick={e => e.stopPropagation()}
+                            className="w-full max-w-2xl"
+                        >
+                            <div className="shimmer-input-wrapper shadow-2xl">
+                                <div className="shimmer-input-content p-2 flex items-center gap-2">
+                                    
+                                    {/* App Label */}
+                                    <div className="pl-4 pr-3 flex items-center gap-2 text-white font-bold whitespace-nowrap border-r border-white/10 shrink-0 h-8">
+                                        <Key size={16} className="text-zinc-400" />
+                                        <span className="hidden sm:inline">{selectedApp.name}</span>
+                                    </div>
+
+                                    {/* Model Selector (if options exist) */}
+                                    {selectedApp.options && selectedApp.options.length > 0 && (
+                                         <div className="relative border-r border-white/10 pr-2 mr-2">
+                                            <select 
+                                                value={selectedOption}
+                                                onChange={e => setSelectedOption(e.target.value)}
+                                                className="bg-transparent text-sm text-zinc-300 outline-none border-none cursor-pointer hover:text-white appearance-none py-1 pl-2 pr-6"
+                                            >
+                                                {selectedApp.options.map(opt => (
+                                                    <option key={opt.value} value={opt.value} className="bg-zinc-900 text-white">{opt.label}</option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                                         </div>
+                                    )}
+                                    
+                                    {/* Key Input */}
                                     <input 
                                         type="password" 
+                                        autoFocus
                                         value={apiKey}
                                         onChange={e => setApiKey(e.target.value)}
-                                        placeholder={`sk_...`}
-                                        className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-white/10 text-white"
+                                        placeholder={`Paste ${selectedApp.name} API Key...`}
+                                        className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-zinc-600 h-10 min-w-[100px] text-sm"
                                     />
-                                </div>
-                                {selectedApp.options && (
-                                    <div>
-                                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2 mb-1">
-                                            Select Model
-                                        </label>
-                                        <select 
-                                            value={selectedOption}
-                                            onChange={e => setSelectedOption(e.target.value)}
-                                            className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-white/10 appearance-none text-white"
+
+                                    {/* Actions */}
+                                    <div className="flex items-center gap-2 pr-1">
+                                        {selectedApp.keyUrl && (
+                                            <a href={selectedApp.keyUrl} target="_blank" rel="noreferrer" className="p-2 text-zinc-500 hover:text-blue-400 transition-colors" title="Get API Key">
+                                                <ExternalLink size={16} />
+                                            </a>
+                                        )}
+                                        <button 
+                                            onClick={confirmApiKey}
+                                            disabled={!apiKey}
+                                            className="h-9 px-5 bg-white hover:bg-zinc-200 text-black rounded-full font-bold text-sm transition-all shadow-lg shadow-white/10 active:scale-95 disabled:opacity-30 disabled:shadow-none whitespace-nowrap"
                                         >
-                                            {selectedApp.options.map(opt => (
-                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                            ))}
-                                        </select>
+                                            Connect
+                                        </button>
                                     </div>
-                                )}
-                                {selectedApp.keyUrl && (
-                                    <a href={selectedApp.keyUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-400 flex items-center gap-1 hover:underline">
-                                        Get your API Key here <ExternalLink size={10}/>
-                                    </a>
-                                )}
-                                <button 
-                                    onClick={confirmApiKey}
-                                    disabled={!apiKey}
-                                    className="w-full py-2.5 bg-white text-black rounded-xl text-sm font-bold disabled:opacity-50"
-                                >
-                                    Save & Add Integration
-                                </button>
+                                </div>
                             </div>
-                        </div>
+                            
+                            {/* Cancel Button */}
+                            <div className="text-center mt-6">
+                                <button onClick={() => setSelectedApp(null)} className="text-xs text-zinc-500 hover:text-white transition-colors bg-black/20 px-3 py-1 rounded-full">Cancel</button>
+                            </div>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
