@@ -15,7 +15,7 @@ import { IntegrationsModal } from './components/IntegrationsModal';
 import { MobileSimulator } from './components/MobileSimulator';
 import { DeployView } from './components/DeployView';
 import { Integration } from './services/integrationsService';
-import { ChatMessage, AppState, CanvasApp, Platform, Page, UserProfile, Project, GenerationMode, ViewMode, AIModel } from './types';
+import { ChatMessage, AppState, CanvasApp, Platform, Page, UserProfile, Project, GenerationMode, ViewMode, AIModel, GeneratedApp } from './types';
 
 interface LandingPageProps {
   onSearch: (text: string, image?: string, mode?: GenerationMode, url?: string) => void;
@@ -411,8 +411,12 @@ export default function App() {
 
   // Sync projects with canvasApps creation
   useEffect(() => {
-    if (canvasApps.length > projects.length) {
-        const newApps = canvasApps.slice(projects.length);
+    setProjects(currentProjects => {
+        const existingIds = new Set(currentProjects.map(p => p.id));
+        const newApps = canvasApps.filter(app => !existingIds.has(app.id));
+        
+        if (newApps.length === 0) return currentProjects;
+
         const newProjects = newApps.map(app => ({
             id: app.id,
             name: app.data.name,
@@ -420,9 +424,20 @@ export default function App() {
             lastEdited: 'Just now',
             icon: app.data.icon 
         }));
-        setProjects(prev => [...prev, ...newProjects]);
-    }
-  }, [canvasApps.length]);
+        return [...currentProjects, ...newProjects];
+    });
+  }, [canvasApps]);
+
+  // Handler for Build Page generated apps
+  const handleBuildProjectCreated = (appData: GeneratedApp) => {
+      setProjects(prev => [{
+          id: crypto.randomUUID(),
+          name: appData.name,
+          platform: appData.platform,
+          lastEdited: 'Just now',
+          icon: appData.icon
+      }, ...prev]);
+  };
 
   // Auto-select app when switching to Prototype mode
   useEffect(() => {
@@ -695,7 +710,7 @@ export default function App() {
         )}
 
         {activePage === 'build' && (
-            <BuildPage />
+            <BuildPage onProjectCreated={handleBuildProjectCreated} />
         )}
 
         {activePage === 'home' && (

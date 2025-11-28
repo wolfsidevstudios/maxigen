@@ -118,7 +118,11 @@ const BuildHome: React.FC<{ onStart: (prompt: string) => void }> = ({ onStart })
     );
 };
 
-export const BuildPage: React.FC = () => {
+interface BuildPageProps {
+  onProjectCreated?: (app: GeneratedApp) => void;
+}
+
+export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated }) => {
   const [input, setInput] = useState('');
   const [state, setState] = useState<AppState>(AppState.IDLE);
   const [app, setApp] = useState<GeneratedApp | null>(null);
@@ -193,6 +197,10 @@ export const BuildPage: React.FC = () => {
           setApp(newApp);
           const aiMsg: ChatMessage = { role: 'assistant', content: explanation, appData: newApp, timestamp: Date.now() };
           setMessages(prev => [...prev, aiMsg]);
+          
+          if (onProjectCreated) {
+              onProjectCreated(newApp);
+          }
       }
       setState(AppState.SUCCESS);
     } catch (error) {
