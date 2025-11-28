@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AIModel } from '../types';
-import { Zap, Cpu, Star, CheckCircle2, Flame, Save } from 'lucide-react';
+import { Zap, Cpu, Star, CheckCircle2, Flame, Save, Key } from 'lucide-react';
 
 interface SettingsPageProps {
   currentModel: AIModel;
@@ -10,17 +10,29 @@ interface SettingsPageProps {
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({ currentModel, onModelChange }) => {
   const [firebaseConfig, setFirebaseConfig] = useState('');
-  const [showSaved, setShowSaved] = useState(false);
+  const [geminiKey, setGeminiKey] = useState('');
+  const [showSavedFirebase, setShowSavedFirebase] = useState(false);
+  const [showSavedGemini, setShowSavedGemini] = useState(false);
 
   useEffect(() => {
-      const saved = localStorage.getItem('firebase_config');
-      if (saved) setFirebaseConfig(saved);
+      const savedFirebase = localStorage.getItem('firebase_config');
+      if (savedFirebase) setFirebaseConfig(savedFirebase);
+
+      const savedGemini = localStorage.getItem('gemini_api_key');
+      if (savedGemini) setGeminiKey(savedGemini);
   }, []);
 
   const handleSaveFirebase = () => {
       localStorage.setItem('firebase_config', firebaseConfig);
-      setShowSaved(true);
-      setTimeout(() => setShowSaved(false), 2000);
+      setShowSavedFirebase(true);
+      setTimeout(() => setShowSavedFirebase(false), 2000);
+  };
+
+  const handleSaveGemini = () => {
+      localStorage.setItem('gemini_api_key', geminiKey);
+      setShowSavedGemini(true);
+      setTimeout(() => setShowSavedGemini(false), 2000);
+      // Force reload to apply new key to services if needed, or services will read from LS next time
   };
 
   const models: { id: AIModel; name: string; desc: string; icon: React.ReactNode }[] = [
@@ -50,6 +62,45 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ currentModel, onMode
         <h1 className="text-3xl font-bold text-white mb-2">Settings</h1>
         <p className="text-zinc-400 mb-10">Manage your AI preferences and app configuration.</p>
 
+        {/* AI Key Section */}
+        <div className="bg-zinc-900 rounded-2xl border border-zinc-800 shadow-sm overflow-hidden mb-8">
+           <div className="px-6 py-4 border-b border-zinc-800 bg-zinc-900 flex items-center justify-between">
+            <div>
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <Key size={18} className="text-emerald-500" />
+                    Gemini API Key
+                </h2>
+                <p className="text-sm text-zinc-400">Required to power the AI features of MaxiGen.</p>
+            </div>
+            {showSavedGemini && <span className="text-xs font-bold text-green-400 flex items-center gap-1"><CheckCircle2 size={12}/> Saved</span>}
+          </div>
+          <div className="p-6">
+             <div className="shimmer-input-wrapper">
+                 <div className="shimmer-input-content">
+                     <input
+                        type="password"
+                        value={geminiKey}
+                        onChange={(e) => setGeminiKey(e.target.value)}
+                        placeholder="Paste your Google Gemini API Key here..."
+                        className="w-full p-4 bg-transparent border-none rounded-xl font-mono text-sm outline-none text-white"
+                     />
+                 </div>
+             </div>
+             <div className="mt-4 flex justify-between items-center">
+                 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-xs text-zinc-500 hover:text-white underline">
+                     Get your API Key from Google AI Studio
+                 </a>
+                 <button 
+                    onClick={handleSaveGemini}
+                    className="bg-white text-black px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-zinc-200 transition-colors"
+                 >
+                     <Save size={16} /> Save Key
+                 </button>
+             </div>
+          </div>
+        </div>
+
+        {/* Models Section */}
         <div className="bg-zinc-900 rounded-2xl border border-zinc-800 shadow-sm overflow-hidden mb-8">
           <div className="px-6 py-4 border-b border-zinc-800 bg-zinc-900">
             <h2 className="text-lg font-semibold text-white">AI Model</h2>
@@ -89,6 +140,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ currentModel, onMode
           </div>
         </div>
 
+        {/* Firebase Section */}
         <div className="bg-zinc-900 rounded-2xl border border-zinc-800 shadow-sm overflow-hidden">
            <div className="px-6 py-4 border-b border-zinc-800 bg-zinc-900 flex items-center justify-between">
             <div>
@@ -98,7 +150,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ currentModel, onMode
                 </h2>
                 <p className="text-sm text-zinc-400">Paste your firebaseConfig object to enable Auth & DB.</p>
             </div>
-            {showSaved && <span className="text-xs font-bold text-green-400 flex items-center gap-1"><CheckCircle2 size={12}/> Saved</span>}
+            {showSavedFirebase && <span className="text-xs font-bold text-green-400 flex items-center gap-1"><CheckCircle2 size={12}/> Saved</span>}
           </div>
           <div className="p-6">
              <div className="shimmer-input-wrapper">

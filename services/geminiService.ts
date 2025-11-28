@@ -3,7 +3,14 @@ import { GoogleGenAI, Type, Schema, Part, Tool } from "@google/genai";
 import { GeneratedApp, Platform, GenerationMode, AIModel } from "../types";
 import { processCodeWithMedia } from "./mediaService";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Helper to get the AI client with the most current key
+const getAI = () => {
+  const apiKey = localStorage.getItem('gemini_api_key') || process.env.API_KEY;
+  if (!apiKey) {
+    console.warn("No API Key found in localStorage or env");
+  }
+  return new GoogleGenAI({ apiKey: apiKey || '' });
+};
 
 // Schema for a single app screen (used for Editing)
 const singleAppSchema: Schema = {
@@ -79,6 +86,8 @@ export const generateAppCode = async (
     firebaseConfig?: string,
     revenueCatKey?: string
 ): Promise<{ screens: GeneratedApp[], explanation: string, sources?: {title: string, uri: string}[], suggestedIntegrations?: string[], edgeFunctions?: any[] }> => {
+  
+  const ai = getAI();
   
   const commonRules = `
     You are an elite Senior Frontend Engineer and Product Designer.
@@ -234,6 +243,8 @@ export const generateAppCode = async (
 };
 
 export const editAppCode = async (currentApp: GeneratedApp, userPrompt: string, image?: string, modelName: AIModel = 'gemini-2.5-flash', firebaseConfig?: string, revenueCatKey?: string): Promise<GeneratedApp> => {
+  const ai = getAI();
+
   const systemInstruction = `
     You are an expert Senior Developer.
     TASK: UPDATE the existing app based on: "${userPrompt}".

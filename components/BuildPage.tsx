@@ -39,6 +39,10 @@ const BuildHome: React.FC<{ onStart: (prompt: string) => void }> = ({ onStart })
         }
     };
 
+    const handleBoostUI = () => {
+        setInput(prev => prev + (prev ? ' ' : '') + " [BOOST UI: Ultra-modern, 28px radius cards, padded images]");
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (input.trim()) onStart(input);
@@ -80,7 +84,14 @@ const BuildHome: React.FC<{ onStart: (prompt: string) => void }> = ({ onStart })
                         
                          <div className="flex items-center justify-between px-4 pb-2">
                              <div className="flex items-center gap-1">
-                                 {/* Placeholder for future tools */}
+                                 <button 
+                                    type="button"
+                                    onClick={handleBoostUI}
+                                    className="p-2 rounded-full transition-colors hover:bg-purple-900/30 text-purple-400" 
+                                    title="Boost UI"
+                                 >
+                                    <Rocket size={18} />
+                                 </button>
                              </div>
                              <div className="flex items-center gap-3">
                                  <button 
@@ -170,6 +181,10 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated }) => {
             () => setIsListening(false)
         );
     }
+  };
+
+  const handleBoostUI = () => {
+      setInput(prev => prev + (prev ? ' ' : '') + " [BOOST UI: Ultra-modern, 28px radius cards, padded images]");
   };
 
   const handleSubmit = async (text: string) => {
@@ -282,6 +297,14 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated }) => {
                                     )}
                                 </AnimatePresence>
                              </div>
+                             <button 
+                                type="button"
+                                onClick={handleBoostUI}
+                                className="p-2 rounded-full transition-colors hover:bg-purple-900/30 text-purple-400" 
+                                title="Boost UI"
+                             >
+                                <Rocket size={18} />
+                             </button>
                         </div>
                         <div className="flex items-center gap-2">
                             <button onClick={handleMicClick} className={`p-2 rounded-full transition-colors flex items-center justify-center ${isListening ? 'bg-zinc-800 text-white' : 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-300'}`}>{isListening ? <AudioWave /> : <Mic size={18} />}</button>
