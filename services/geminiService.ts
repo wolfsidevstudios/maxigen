@@ -142,10 +142,11 @@ export const generateAppCode = async (
     IMPORTANT: You MUST generate a full file structure in the 'files' array.
     
     Required Files in 'files' array:
-    1. '/src/App.tsx' (Main entry)
-    2. '/src/index.css' (Tailwind directives: @tailwind base; @tailwind components; @tailwind utilities;)
-    3. '/src/components/...' (Break UI into small, reusable components)
-    4. '/package.json' (Dependencies: react, react-dom, lucide-react, framer-motion, firebase (if needed), @revenuecat/purchases-js (if needed))
+    1. '/src/main.tsx' (Entry point, MUST render <App /> into root div using ReactDOM.createRoot)
+    2. '/src/App.tsx' (Main Component)
+    3. '/src/index.css' (Tailwind directives: @tailwind base; @tailwind components; @tailwind utilities;)
+    4. '/src/components/...' (Break UI into small, reusable components)
+    5. '/package.json' (Dependencies: react, react-dom, lucide-react, framer-motion, firebase (if needed), @revenuecat/purchases-js (if needed))
     
     Design Philosophy:
     - Grid System: 8px grid.
@@ -244,6 +245,7 @@ export const editAppCode = async (currentApp: GeneratedApp, userPrompt: string, 
     
     RULES:
     - MODIFY the 'files' array to reflect changes. split components if needed.
+    - Ensure 'src/main.tsx' exists and renders App correctly.
     - UI BOOST: rounded-[28px], padded images, soft shadows.
     - AUTH: Implement Firebase Auth if config provided.
     - PAYMENTS: Implement RevenueCat (Real SDK) if key provided: "${revenueCatKey || ''}".

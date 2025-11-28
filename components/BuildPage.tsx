@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Rocket, Monitor, ArrowUp, Loader2, Play, Plus, Mic, Terminal, Code2, LayoutDashboard, Database, ImageIcon, Hammer, RefreshCw } from 'lucide-react';
@@ -166,7 +167,7 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated }) => {
     if (app) {
         let files: Record<string, string> = {};
         
-        // Use multi-file structure if available
+        // 1. Process Files from AI
         if (app.files && app.files.length > 0) {
             app.files.forEach((file: ProjectFile) => {
                 let path = file.path;
@@ -175,15 +176,45 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated }) => {
                 files[path] = file.content;
             });
         } else {
-            // Fallback for single file or legacy
+            // Fallback for single file or legacy: Place in src/App.tsx
             files = {
-                "App.tsx": app.webCompatibleCode || app.reactNativeCode,
+                "src/App.tsx": app.webCompatibleCode || app.reactNativeCode,
             };
         }
         
-        // Ensure index.html exists for Tailwind
-        if (!files['public/index.html'] && !files['index.html']) {
-            files['public/index.html'] = `<!DOCTYPE html>
+        // 2. Ensure Entry Point (main.tsx) exists
+        // Check if any standard entry file is present
+        const hasMain = Object.keys(files).some(f => 
+            f === 'src/main.tsx' || f === 'src/main.jsx' || f === 'src/index.tsx' || f === 'src/index.jsx'
+        );
+
+        if (!hasMain) {
+            // Inject default main.tsx
+            files['src/main.tsx'] = `import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)
+`;
+        }
+
+        // 3. Ensure index.css exists (even if empty to prevent import error in main.tsx)
+        if (!files['src/index.css']) {
+            files['src/index.css'] = `
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+            `;
+        }
+
+        // 4. Force index.html to point to src/main.tsx and include Tailwind CDN
+        // We overwrite this to ensure the preview works, as the AI might miss the script tag
+        files['index.html'] = `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -193,9 +224,9 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated }) => {
   </head>
   <body>
     <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>`;
-        }
 
         setSandpackFiles(files);
     }
@@ -396,7 +427,7 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated }) => {
                                 }}
                                 customSetup={sandpackCustomSetup}
                             >
-                                <SandpackLayout style={{ height: '100%' }} className="h-full border-none rounded-none bg-zinc-900">
+                                <SandpackLayout style={{ height: '100%' }} className="!h-full border-none rounded-none bg-zinc-900">
                                     {activeTab === 'code' && (
                                         <>
                                             <SandpackFileExplorer className="h-full border-r border-zinc-800 bg-zinc-950" />
@@ -406,6 +437,7 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated }) => {
                                                 showInlineErrors
                                                 wrapContent
                                                 closableTabs
+                                                style={{ height: '100%' }}
                                                 className="h-full" 
                                             />
                                         </>
@@ -415,6 +447,7 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated }) => {
                                             showNavigator 
                                             showOpenInCodeSandbox={false}
                                             showRefreshButton
+                                            style={{ height: '100%' }}
                                             className="h-full" 
                                         />
                                     )}
