@@ -138,9 +138,11 @@ const BuildHome: React.FC<{ onStart: (prompt: string) => void }> = ({ onStart })
 
 interface BuildPageProps {
   onProjectCreated?: (app: GeneratedApp) => void;
+  initialPrompt?: string | null;
+  onPromptHandled?: () => void;
 }
 
-export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated }) => {
+export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialPrompt, onPromptHandled }) => {
   const [input, setInput] = useState('');
   const [state, setState] = useState<AppState>(AppState.IDLE);
   const [app, setApp] = useState<GeneratedApp | null>(null);
@@ -161,6 +163,13 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated }) => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    if (initialPrompt && state === AppState.IDLE) {
+        handleSubmit(initialPrompt);
+        if (onPromptHandled) onPromptHandled();
+    }
+  }, [initialPrompt]);
 
   // Convert GeneratedApp files to Sandpack format
   useEffect(() => {

@@ -382,6 +382,7 @@ export default function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [canvasApps, setCanvasApps] = useState<CanvasApp[]>([]);
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
+  const [pendingBuildPrompt, setPendingBuildPrompt] = useState<string | null>(null);
   
   // Platform & Mode State
   const [platform, setPlatform] = useState<Platform>('mobile');
@@ -484,10 +485,9 @@ export default function App() {
   };
 
   const handleUseTemplate = (prompt: string, templatePlatform: 'web' | 'mobile') => {
-      handleNewProject(); // Clear workspace
-      setPlatform(templatePlatform);
-      setActivePage('home');
-      processInput(prompt);
+      // Always direct templates to the Build Tool
+      setActivePage('build');
+      setPendingBuildPrompt(prompt);
   };
 
   // Auto-select app when switching to Prototype mode
@@ -782,7 +782,11 @@ export default function App() {
         )}
 
         {activePage === 'build' && (
-            <BuildPage onProjectCreated={handleBuildProjectCreated} />
+            <BuildPage 
+                onProjectCreated={handleBuildProjectCreated} 
+                initialPrompt={pendingBuildPrompt}
+                onPromptHandled={() => setPendingBuildPrompt(null)}
+            />
         )}
 
         {activePage === 'templates' && (
