@@ -63,10 +63,10 @@ const BuildHome: React.FC<{ onStart: (prompt: string) => void }> = ({ onStart })
             </div>
             
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-4 text-center">
-                Build Production Web Apps
+                Build HTML5 Web Apps
             </h1>
             <p className="text-lg text-zinc-400 mb-10 max-w-lg leading-relaxed text-center">
-                Turn your ideas into full-stack React applications with database, auth, and edge functions.
+                Turn your ideas into modern, responsive HTML/CSS/JS applications instantly.
             </p>
 
             <form onSubmit={handleSubmit} className="w-full max-w-2xl relative group z-20">
@@ -77,7 +77,7 @@ const BuildHome: React.FC<{ onStart: (prompt: string) => void }> = ({ onStart })
                         <textarea 
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            placeholder="Describe your web app (e.g. 'SaaS Dashboard with Stripe')..."
+                            placeholder="Describe your web app (e.g. 'Personal Portfolio website')..."
                             className="w-full bg-transparent border-none outline-none px-6 py-4 text-xl text-white placeholder:text-zinc-600 font-medium resize-none h-[120px] custom-scrollbar"
                             autoFocus
                             onKeyDown={(e) => {
@@ -121,7 +121,7 @@ const BuildHome: React.FC<{ onStart: (prompt: string) => void }> = ({ onStart })
             </form>
             
             <div className="mt-16 flex flex-wrap justify-center gap-3 opacity-60">
-                {["SaaS Dashboard", "E-commerce Admin", "CRM System"].map(suggestion => (
+                {["Landing Page", "Portfolio", "Login Form"].map(suggestion => (
                     <button 
                         key={suggestion}
                         onClick={() => onStart(suggestion)}
@@ -183,8 +183,7 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
                 let path = file.path;
                 if (path.startsWith('/')) path = path.substring(1);
                 
-                // IMPORTANT: Filter out config files from AI to prevent Sandpack runtime errors.
-                // We rely on sandpackCustomSetup for environment stability.
+                // Filter out npm config files since we are in static mode
                 if (['package.json', 'package-lock.json', 'yarn.lock', 'vite.config.js', 'vite.config.ts', 'tsconfig.json'].includes(path)) {
                     return;
                 }
@@ -192,50 +191,27 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
                 files[path] = file.content;
             });
         } else {
+            // Fallback for single file code (assumed HTML in webCompatibleCode)
             files = {
-                "src/App.tsx": app.webCompatibleCode || app.reactNativeCode,
+                "index.html": app.webCompatibleCode || "<h1>No code generated</h1>",
             };
         }
         
-        // Dynamic Entry Point Detection
-        let entryFile = Object.keys(files).find(f => 
-            f === 'src/main.tsx' || f === 'src/main.jsx' || f === 'src/index.tsx' || f === 'src/index.jsx'
-        );
-
-        if (!entryFile) {
-            // Create default main.tsx if missing
-            entryFile = 'src/main.tsx';
-            files['src/main.tsx'] = `import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App'
-import './index.css'
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
-`;
-        }
-
-        if (!files['src/index.css']) {
-            files['src/index.css'] = `@tailwind base;\n@tailwind components;\n@tailwind utilities;`;
-        }
-
-        // Generate index.html pointing to the detected entry file
-        files['index.html'] = `<!DOCTYPE html>
+        // Ensure index.html exists
+        if (!files['index.html']) {
+            files['index.html'] = `<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${app.name}</title>
     <script src="https://cdn.tailwindcss.com"></script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/${entryFile}"></script>
-  </body>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <h1 class="text-2xl font-bold">App generated, but index.html missing.</h1>
+</body>
 </html>`;
+        }
 
         setSandpackFiles(files);
     }
@@ -345,20 +321,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       );
   }
 
-  // Sandpack setup
+  // Sandpack setup - STATIC TEMPLATE for HTML/JS
   const sandpackCustomSetup = {
-    dependencies: {
-        "lucide-react": "latest",
-        "framer-motion": "latest",
-        "clsx": "latest",
-        "tailwind-merge": "latest",
-        "firebase": "latest",
-        "@revenuecat/purchases-js": "latest",
-        "react-router-dom": "latest",
-        "recharts": "latest",
-        "date-fns": "latest",
-        "esbuild-wasm": "0.21.5"
-    },
+    // No npm dependencies needed for static template usually, 
+    // but we can keep some generic ones if we switch back or for specific use cases.
+    dependencies: {}, 
   };
 
   return (
@@ -366,7 +333,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       {/* LEFT PANEL */}
       <div className="w-full md:w-[450px] flex flex-col border-r border-zinc-800 h-[40vh] md:h-screen bg-zinc-950 shadow-xl z-20">
         <div className="h-16 flex items-center px-6 border-b border-zinc-800 bg-zinc-950 sticky top-0 z-20 justify-between">
-            <div className="flex items-center gap-2"><div className="p-1.5 bg-white text-black rounded-lg"><Rocket size={16} /></div><h1 className="font-bold text-sm tracking-tight text-white">React Builder</h1></div>
+            <div className="flex items-center gap-2"><div className="p-1.5 bg-white text-black rounded-lg"><Rocket size={16} /></div><h1 className="font-bold text-sm tracking-tight text-white">HTML Builder</h1></div>
             <div className="bg-amber-900/30 text-amber-400 px-2 py-0.5 rounded text-[10px] font-bold border border-amber-500/30 uppercase tracking-wide">Beta</div>
         </div>
 
@@ -440,7 +407,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             {state === AppState.GENERATING && (
                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mx-4 bg-zinc-900 rounded-[24px] p-4 border border-zinc-800 shadow-lg flex items-center gap-4 w-fit pr-8">
                     <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/20"><Loader2 size={20} className="text-blue-400 animate-spin" /></div>
-                    <div className="flex flex-col"><span className="font-bold text-sm text-white">Building App</span><span className="text-[10px] text-zinc-500 font-medium">Writing React components...</span></div>
+                    <div className="flex flex-col"><span className="font-bold text-sm text-white">Building App</span><span className="text-[10px] text-zinc-500 font-medium">Writing HTML & CSS...</span></div>
                  </motion.div>
             )}
             <div ref={messagesEndRef} />
@@ -501,11 +468,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                 
                 <div className="flex-1 relative bg-zinc-900 overflow-hidden">
                     
-                    {/* SANDPACK INTEGRATION */}
+                    {/* SANDPACK INTEGRATION - STATIC MODE */}
                     {(activeTab === 'preview' || activeTab === 'code') && (
                         <div className="absolute inset-0 z-10">
                             <SandpackProvider
-                                template="vite-react"
+                                template="static"
                                 theme="dark"
                                 files={sandpackFiles}
                                 style={{ height: '100%' }}
@@ -563,7 +530,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     <Monitor size={48} className="opacity-20" />
                 </div>
                 <h3 className="text-xl font-bold text-zinc-300 mb-2">Ready to Build</h3>
-                <p className="max-w-xs text-center text-sm">Your app preview will appear here once the planning phase is complete.</p>
+                <p className="max-w-xs text-center text-sm">Your HTML5 app preview will appear here.</p>
             </div>
           )}
       </div>

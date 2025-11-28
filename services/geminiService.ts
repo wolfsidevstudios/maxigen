@@ -17,7 +17,7 @@ const getAI = () => {
 const fileSchema: Schema = {
     type: Type.OBJECT,
     properties: {
-        path: { type: Type.STRING, description: "File path (e.g., 'src/components/Header.tsx')" },
+        path: { type: Type.STRING, description: "File path (e.g., 'index.html', 'script.js')" },
         content: { type: Type.STRING, description: "The full code content." }
     },
     required: ["path", "content"]
@@ -29,8 +29,8 @@ const planSchema: Schema = {
     title: { type: Type.STRING, description: "A catchy, modern app title with an emoji." },
     targetAudience: { type: Type.STRING, description: "Who is this app for?" },
     features: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of 3-5 key features (use emojis)." },
-    techStack: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of technologies (React, Tailwind, etc)." },
-    fileStructureSummary: { type: Type.ARRAY, items: { type: Type.STRING }, description: "High-level list of main folders/files." },
+    techStack: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of technologies (HTML5, Tailwind, JS)." },
+    fileStructureSummary: { type: Type.ARRAY, items: { type: Type.STRING }, description: "High-level list of main files." },
     colorPalette: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of hex codes or Tailwind color names." }
   },
   required: ["title", "features", "techStack", "fileStructureSummary"]
@@ -91,9 +91,9 @@ export const generateProjectPlan = async (
       
       REQUIREMENTS:
       1. Title: Catchy and includes an emoji.
-      2. Features: 3-5 bullet points, bold key terms (e.g., "**Auth**: Secure login...").
-      3. Tech Stack: React, Tailwind, Lucide, Framer Motion, Firebase (if needed).
-      4. File Structure: Propose a clean feature-based or component-based structure.
+      2. Features: 3-5 bullet points, bold key terms.
+      3. Tech Stack: HTML5, Tailwind CSS, Vanilla JavaScript.
+      4. File Structure: Propose a clean structure (index.html, style.css, script.js).
     `;
 
     try {
@@ -147,10 +147,10 @@ export const generateAppCode = async (
     - **BOLD**: Use **bold** for important concepts in the explanation.
 
     Technologies:
-       - React (Functional Components, Hooks)
-       - Tailwind CSS (Utility classes)
-       - Lucide React (Icons)
-       - Framer Motion (Animations)
+       - HTML5
+       - Tailwind CSS (via CDN)
+       - Vanilla JavaScript (ES6+)
+       - FontAwesome or similar via CDN if needed
        
     MEDIA & IMAGES (MANDATORY):
     - NEVER use placeholder URLs like placehold.co.
@@ -158,37 +158,29 @@ export const generateAppCode = async (
     
     FIREBASE:
     ${firebaseConfig ? `
-    - Config provided. Implement REAL Authentication and Firestore.
-    - Initialize app in 'src/firebase.ts'.
+    - Config provided. Implement REAL Authentication and Firestore using Firebase JS SDK (ES Modules via CDN).
+    - Initialize app in 'firebase.js' or 'script.js'.
     ` : `- Simulate Auth if requested.`}
-
-    REVENUECAT:
-    ${revenueCatKey ? `
-    - Key provided: "${revenueCatKey}".
-    - Implement REAL payments using '@revenuecat/purchases-js'.
-    ` : ''}
   `;
 
-  // --- WEB INSTRUCTIONS (FULL DESIGN SYSTEM) ---
+  // --- WEB INSTRUCTIONS (HTML/CSS/JS) ---
   const webInstructions = `
-    PLATFORM: WEB (React TypeScript + Tailwind CSS)
-    
-    IMPORTANT: You MUST generate a full file structure in the 'files' array.
-    
-    Required Files in 'files' array:
-    1. '/src/main.tsx' (Entry point, renders <App />)
-    2. '/src/App.tsx' (Main Component)
-    3. '/src/index.css' (Tailwind directives)
-    4. '/src/components/...' (Break UI into small, reusable components)
-    
-    Design Philosophy:
-    - Grid System: 8px grid.
-    - Spacing: generous padding (p-6, p-8).
-    - Colors: Zinc neutrals + Vibrant Accents.
+    PLATFORM: WEB (Standard HTML5 + Tailwind CSS + Vanilla JS)
 
-    CRITICAL IMPORT RULE:
-    - Do not use '@/' alias for imports. Use relative paths (e.g., '../../components').
-    - Example: import Header from '../components/Header';
+    IMPORTANT: You MUST generate a full MULTI-FILE structure in the 'files' array.
+
+    Expected Structure:
+    1. 'index.html' (Main entry point. MUST include <script src="https://cdn.tailwindcss.com"></script>)
+    2. 'style.css' (Custom styles if needed)
+    3. 'script.js' (Interactive logic)
+    4. 'README.md' (Optional instructions)
+
+    CRITICAL RULES:
+    - DO NOT use React, JSX, or 'import' statements that require a bundler (unless using ES modules browser-natively).
+    - Use standard ES6 JavaScript.
+    - Use Tailwind CSS for styling via the CDN link in the <head>.
+    - Ensure 'index.html' links to 'style.css' (<link rel="stylesheet">) and 'script.js' (<script src="script.js" defer></script>).
+    - Do not use '@/' alias for imports.
   `;
 
   const mobileInstructions = `
@@ -278,11 +270,9 @@ export const editAppCode = async (
     OUTPUT: JSON containing 'files' and 'webCompatibleCode'.
     
     RULES:
-    - MODIFY the 'files' array to reflect changes. 
-    - KEEP 'src/main.tsx' and 'src/index.css'.
+    - MODIFY the 'files' array to reflect changes.
+    - If it's a web app, ensure you maintain 'index.html', 'script.js', etc.
     - UI BOOST: rounded-[28px], padded images, soft shadows.
-    - PAYMENTS: If key provided ("${revenueCatKey || ''}"), ensure RevenueCat is integrated.
-    - CRITICAL: Do NOT use '@/' alias for imports. Use relative paths.
     ${firebaseConfig ? `Config: ${firebaseConfig}` : ''}
   `;
   
@@ -296,13 +286,6 @@ export const editAppCode = async (
   try {
     let selectedModel = modelName as string;
     if (selectedModel === 'gemini-2.5-pro') selectedModel = 'gemini-3-pro-preview';
-
-    // We use singleAppSchema from original file, assuming it's imported or defined nearby. 
-    // Re-defining purely for this snippet context if needed, but assuming existing import structure holds.
-    // For this update, I will trust the environment has the schema or I would need to re-declare it.
-    // To be safe, I'll rely on the fact that I'm replacing the whole file content in previous steps or just updating the function.
-    // But since I'm replacing the file content, I need to make sure schemas are there.
-    // (In the full file replacement above, I included schemas).
     
     const response = await ai.models.generateContent({
       model: selectedModel,
@@ -310,9 +293,6 @@ export const editAppCode = async (
       config: { 
           systemInstruction, 
           responseMimeType: "application/json", 
-          // Note: Using 'multiAppSchema' structure but strictly for one screen return or adapting 
-          // The previous 'singleAppSchema' was better. Let's use a simpler inline schema or the one defined at top.
-          // I will use a simplified schema definition here to ensure it works.
            responseSchema: {
               type: Type.OBJECT,
               properties: {
