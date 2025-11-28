@@ -1,13 +1,29 @@
 
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Sparkles, Zap, Smartphone, Globe, Code2, ArrowRight, Layers, Cpu, Rocket, Shield } from 'lucide-react';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { Sparkles, Zap, Smartphone, Globe, Code2, ArrowRight, Layers, Cpu, Rocket, Shield, CheckCircle2, Terminal, Database, Play, DollarSign, Users, Timer, Star } from 'lucide-react';
 
 interface MarketingPageProps {
   onGetStarted: () => void;
 }
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { 
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
+};
+
 export const MarketingPage: React.FC<MarketingPageProps> = ({ onGetStarted }) => {
+  const { scrollYProgress } = useScroll();
+  const y = useTransform(scrollYProgress, [0, 1], [0, -50]);
+
   return (
     <div className="min-h-screen bg-black text-white selection:bg-purple-500/30 font-sans overflow-x-hidden">
       
@@ -22,7 +38,7 @@ export const MarketingPage: React.FC<MarketingPageProps> = ({ onGetStarted }) =>
             </div>
             <div className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-400">
                 <a href="#features" className="hover:text-white transition-colors">Features</a>
-                <a href="#showcase" className="hover:text-white transition-colors">Showcase</a>
+                <a href="#how-it-works" className="hover:text-white transition-colors">How it Works</a>
                 <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
             </div>
             <button 
@@ -34,180 +50,420 @@ export const MarketingPage: React.FC<MarketingPageProps> = ({ onGetStarted }) =>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 px-6 overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-purple-600/20 rounded-full blur-[120px] opacity-30 pointer-events-none" />
-        <div className="absolute bottom-0 right-0 w-[800px] h-[600px] bg-blue-600/10 rounded-full blur-[100px] opacity-20 pointer-events-none" />
-
-        <div className="max-w-5xl mx-auto text-center relative z-10">
+      {/* 1. HERO SECTION */}
+      <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 px-6 overflow-hidden min-h-screen flex items-center justify-center">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-purple-600/20 rounded-full blur-[120px] opacity-30 pointer-events-none animate-pulse" />
+        
+        <div className="max-w-6xl mx-auto text-center relative z-10">
             <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
+                transition={{ duration: 0.8 }}
             >
-                <span className="inline-block py-1 px-3 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-medium text-zinc-400 mb-6">
-                    <span className="text-purple-400 mr-2">●</span> v2.0 Now Available
-                </span>
-                <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-8 leading-tight">
-                    Build Production Apps <br />
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-medium text-zinc-400 mb-8 hover:border-purple-500/50 transition-colors cursor-default">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+                    </span>
+                    AI-Powered App Builder v2.0
+                </div>
+                
+                <h1 className="text-6xl md:text-8xl font-bold tracking-tight mb-8 leading-[0.9]">
+                    Build Apps at <br />
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-purple-400">
-                        At The Speed of Thought
+                        Light Speed
                     </span>
                 </h1>
-                <p className="text-lg md:text-xl text-zinc-400 mb-10 max-w-2xl mx-auto leading-relaxed">
-                    Generate multi-file React & Native applications with one prompt. 
-                    Integrated with Firebase, RevenueCat, and Vercel.
+                
+                <p className="text-xl text-zinc-400 mb-12 max-w-2xl mx-auto leading-relaxed">
+                    Transform text into production-ready React applications. 
+                    Integrated authentication, database, and payments included.
                 </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
                     <button 
                         onClick={onGetStarted}
-                        className="group relative px-8 py-4 bg-white text-black rounded-full font-bold text-lg shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] hover:shadow-[0_0_60px_-10px_rgba(255,255,255,0.4)] transition-all overflow-hidden"
+                        className="group relative px-8 py-4 bg-white text-black rounded-full font-bold text-lg shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] hover:shadow-[0_0_60px_-10px_rgba(255,255,255,0.4)] transition-all overflow-hidden w-full sm:w-auto"
                     >
-                        <span className="relative z-10 flex items-center gap-2">
-                            Start Building Free <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform"/>
+                        <span className="relative z-10 flex items-center justify-center gap-2">
+                            Start Building <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform"/>
                         </span>
-                        <div className="absolute inset-0 bg-gradient-to-r from-zinc-200 to-white opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
-                    <button className="px-8 py-4 bg-zinc-900 text-white border border-zinc-800 rounded-full font-bold text-lg hover:bg-zinc-800 transition-all">
-                        View Showcase
+                    <button className="px-8 py-4 bg-zinc-900 text-white border border-zinc-800 rounded-full font-bold text-lg hover:bg-zinc-800 transition-all w-full sm:w-auto">
+                        Watch Demo
                     </button>
                 </div>
+
+                {/* Simulated UI Card */}
+                <motion.div 
+                    initial={{ opacity: 0, rotateX: 20, y: 100 }}
+                    animate={{ opacity: 1, rotateX: 0, y: 0 }}
+                    transition={{ delay: 0.4, duration: 1, type: "spring" }}
+                    className="relative mx-auto max-w-5xl rounded-[24px] border border-white/10 bg-zinc-900/50 backdrop-blur-xl shadow-2xl overflow-hidden"
+                >
+                    <div className="h-12 bg-zinc-900 border-b border-white/5 flex items-center px-4 gap-2">
+                         <div className="flex gap-2">
+                             <div className="w-3 h-3 rounded-full bg-red-500/20" />
+                             <div className="w-3 h-3 rounded-full bg-yellow-500/20" />
+                             <div className="w-3 h-3 rounded-full bg-green-500/20" />
+                         </div>
+                    </div>
+                    <div className="aspect-[16/9] bg-black/50 p-8 flex items-center justify-center">
+                        <div className="grid grid-cols-2 gap-8 w-full max-w-3xl">
+                             <div className="space-y-4">
+                                 <div className="h-32 bg-zinc-800/50 rounded-xl animate-pulse" />
+                                 <div className="h-8 bg-zinc-800/50 rounded-lg w-3/4" />
+                                 <div className="h-4 bg-zinc-800/50 rounded-lg w-1/2" />
+                             </div>
+                             <div className="space-y-4 pt-8">
+                                 <div className="h-8 bg-zinc-800/50 rounded-lg w-full" />
+                                 <div className="h-32 bg-zinc-800/50 rounded-xl" />
+                                 <div className="h-8 bg-purple-500/20 rounded-lg w-1/3" />
+                             </div>
+                        </div>
+                    </div>
+                </motion.div>
             </motion.div>
         </div>
       </section>
 
-      {/* Interface Mockup Animation */}
-      <section className="px-4 mb-32">
-        <motion.div 
-            initial={{ opacity: 0, y: 40, rotateX: 20 }}
-            whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
-            transition={{ duration: 1, type: "spring" }}
-            viewport={{ once: true }}
-            className="max-w-6xl mx-auto rounded-[32px] border border-white/10 bg-[#0a0a0a] shadow-2xl shadow-purple-900/20 overflow-hidden relative"
-        >
-            <div className="h-12 bg-zinc-900/50 border-b border-white/5 flex items-center px-4 gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50" />
-                <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50" />
-                <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50" />
+      {/* 2. LOGO TICKER SECTION */}
+      <section className="py-10 border-y border-white/5 bg-black/50">
+          <div className="max-w-7xl mx-auto px-6 overflow-hidden">
+              <p className="text-center text-sm font-semibold text-zinc-500 uppercase tracking-widest mb-8">Trusted by innovators at</p>
+              <div className="flex relative w-full overflow-hidden mask-gradient">
+                  <motion.div 
+                      className="flex gap-16 min-w-full items-center justify-around whitespace-nowrap"
+                      animate={{ x: "-100%" }}
+                      transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                  >
+                      {["Acme Corp", "Global Bank", "TechStart", "Future AI", "Nebula", "Orbit", "Quantum", "Hyperion", "Vertex"].map((logo, i) => (
+                          <span key={i} className="text-2xl font-bold text-zinc-700">{logo}</span>
+                      ))}
+                      {["Acme Corp", "Global Bank", "TechStart", "Future AI", "Nebula", "Orbit", "Quantum", "Hyperion", "Vertex"].map((logo, i) => (
+                          <span key={`dup-${i}`} className="text-2xl font-bold text-zinc-700">{logo}</span>
+                      ))}
+                  </motion.div>
+              </div>
+          </div>
+      </section>
+
+      {/* 3. WORKFLOW / HOW IT WORKS */}
+      <section id="how-it-works" className="py-32 px-6">
+          <div className="max-w-7xl mx-auto">
+              <div className="text-center mb-20">
+                  <h2 className="text-4xl md:text-5xl font-bold mb-6">From Idea to App in Minutes</h2>
+                  <p className="text-zinc-400 text-lg">No complex setup. Just describe, refine, and deploy.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  {[
+                      { icon: <Smartphone size={32} />, title: "Describe", desc: "Tell MaxiGen what you want to build using natural language." },
+                      { icon: <Sparkles size={32} />, title: "Generate", desc: "Our AI engine writes the code, sets up the database, and styles the UI." },
+                      { icon: <Rocket size={32} />, title: "Deploy", desc: "Push to Vercel or download the code for your own pipeline." }
+                  ].map((step, i) => (
+                      <motion.div 
+                          key={i}
+                          initial={{ opacity: 0, y: 20 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.2 }}
+                          viewport={{ once: true }}
+                          className="p-8 rounded-[32px] bg-zinc-900 border border-white/5 hover:border-purple-500/30 transition-colors group"
+                      >
+                          <div className="w-16 h-16 rounded-2xl bg-zinc-800 flex items-center justify-center mb-6 text-white group-hover:scale-110 transition-transform group-hover:bg-purple-600">
+                              {step.icon}
+                          </div>
+                          <h3 className="text-2xl font-bold mb-4">0{i+1}. {step.title}</h3>
+                          <p className="text-zinc-400 leading-relaxed">{step.desc}</p>
+                      </motion.div>
+                  ))}
+              </div>
+          </div>
+      </section>
+
+      {/* 4. BENTO GRID FEATURES */}
+      <section id="features" className="py-32 px-6 bg-zinc-900/30 border-y border-white/5">
+        <div className="max-w-7xl mx-auto">
+            <div className="mb-16">
+                <h2 className="text-3xl md:text-5xl font-bold mb-6">Everything you need to ship</h2>
             </div>
-            <div className="relative aspect-[16/9] bg-gradient-to-br from-zinc-900 to-black p-8 flex gap-8">
-                {/* Simulated Sidebar */}
-                <div className="w-64 h-full rounded-xl bg-white/5 border border-white/5 p-4 flex flex-col gap-3">
-                    <div className="h-8 w-24 bg-white/10 rounded-lg mb-4" />
-                    {[1,2,3,4].map(i => (
-                        <div key={i} className="h-10 w-full bg-white/5 rounded-lg" />
-                    ))}
-                </div>
-                {/* Simulated Canvas */}
-                <div className="flex-1 h-full rounded-xl bg-white/5 border border-white/5 flex items-center justify-center relative overflow-hidden">
-                    <div className="absolute inset-0 bg-grid-white/[0.02]" />
-                    <motion.div 
-                        animate={{ scale: [0.95, 1, 0.95] }}
-                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                        className="w-[300px] h-[500px] bg-black border border-zinc-700 rounded-[32px] shadow-2xl flex flex-col overflow-hidden"
-                    >
-                        <div className="h-14 bg-zinc-900 border-b border-zinc-800" />
-                        <div className="flex-1 bg-zinc-950 p-4 space-y-4">
-                            <div className="h-32 rounded-2xl bg-zinc-800 animate-pulse" />
-                            <div className="h-8 w-2/3 rounded-lg bg-zinc-800" />
-                            <div className="h-4 w-1/2 rounded-lg bg-zinc-800" />
-                            <div className="flex gap-2 mt-4">
-                                <div className="h-10 flex-1 rounded-lg bg-purple-600/50" />
-                                <div className="h-10 flex-1 rounded-lg bg-zinc-800" />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[300px]">
+                <motion.div 
+                    whileHover={{ scale: 1.02 }}
+                    className="md:col-span-2 rounded-[32px] bg-zinc-900 border border-white/10 p-8 flex flex-col relative overflow-hidden group"
+                >
+                    <div className="absolute top-0 right-0 p-8 opacity-20 group-hover:opacity-40 transition-opacity">
+                        <Code2 size={120} />
+                    </div>
+                    <div className="relative z-10 mt-auto">
+                        <div className="w-12 h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center mb-4 text-blue-400">
+                            <Layers size={24} />
+                        </div>
+                        <h3 className="text-2xl font-bold mb-2">Multi-file Architecture</h3>
+                        <p className="text-zinc-400">Generates separate files for Components, Hooks, and Styles.</p>
+                    </div>
+                </motion.div>
+
+                <motion.div 
+                    whileHover={{ scale: 1.02 }}
+                    className="rounded-[32px] bg-zinc-900 border border-white/10 p-8 flex flex-col relative overflow-hidden"
+                >
+                    <div className="mt-auto">
+                        <div className="w-12 h-12 bg-purple-500/20 rounded-2xl flex items-center justify-center mb-4 text-purple-400">
+                            <Smartphone size={24} />
+                        </div>
+                        <h3 className="text-2xl font-bold mb-2">React Native</h3>
+                        <p className="text-zinc-400">Export to Expo seamlessly.</p>
+                    </div>
+                </motion.div>
+
+                <motion.div 
+                    whileHover={{ scale: 1.02 }}
+                    className="rounded-[32px] bg-zinc-900 border border-white/10 p-8 flex flex-col relative overflow-hidden"
+                >
+                    <div className="mt-auto">
+                        <div className="w-12 h-12 bg-green-500/20 rounded-2xl flex items-center justify-center mb-4 text-green-400">
+                            <Cpu size={24} />
+                        </div>
+                        <h3 className="text-2xl font-bold mb-2">Integrations</h3>
+                        <p className="text-zinc-400">Firebase, Supabase, Stripe.</p>
+                    </div>
+                </motion.div>
+
+                <motion.div 
+                    whileHover={{ scale: 1.02 }}
+                    className="md:col-span-2 rounded-[32px] bg-zinc-900 border border-white/10 p-8 flex flex-col relative overflow-hidden group"
+                >
+                    <div className="absolute inset-0 bg-gradient-to-br from-black to-zinc-900 z-0" />
+                    <div className="relative z-10 mt-auto flex items-end justify-between">
+                        <div>
+                            <div className="w-12 h-12 bg-orange-500/20 rounded-2xl flex items-center justify-center mb-4 text-orange-400">
+                                <Rocket size={24} />
                             </div>
+                            <h3 className="text-2xl font-bold mb-2">Instant Deployment</h3>
+                            <p className="text-zinc-400">One-click Vercel deploys.</p>
                         </div>
-                    </motion.div>
-                </div>
+                        <button onClick={onGetStarted} className="bg-white text-black px-6 py-2 rounded-full font-bold text-sm hidden md:block hover:bg-zinc-200">
+                            Try It Now
+                        </button>
+                    </div>
+                </motion.div>
             </div>
-        </motion.div>
+        </div>
       </section>
 
-      {/* Bento Grid Features */}
-      <section id="features" className="max-w-7xl mx-auto px-6 py-20">
-        <div className="mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold mb-6">Built for Modern Engineering</h2>
-            <p className="text-zinc-400 max-w-2xl text-lg">MaxiGen isn't just a UI generator. It writes production-grade code, handles database connections, and deploys to the edge.</p>
-        </div>
+      {/* 5. CODE DEMO SECTION */}
+      <section className="py-32 px-6 overflow-hidden">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-16">
+              <div className="flex-1">
+                  <h2 className="text-4xl md:text-5xl font-bold mb-6">Clean Code,<br />Zero Technical Debt</h2>
+                  <p className="text-zinc-400 text-lg mb-8">
+                      MaxiGen doesn't just "mock" apps. It writes industry-standard Typescript, React, and Tailwind code that you can actually maintain.
+                  </p>
+                  <ul className="space-y-4">
+                      {["TypeScript Support", "Tailwind CSS Styling", "Modular Components", "Custom Hooks"].map((item, i) => (
+                          <li key={i} className="flex items-center gap-3 text-lg">
+                              <CheckCircle2 size={24} className="text-green-500" />
+                              {item}
+                          </li>
+                      ))}
+                  </ul>
+              </div>
+              <div className="flex-1 w-full">
+                  <motion.div 
+                    initial={{ x: 50, opacity: 0 }}
+                    whileInView={{ x: 0, opacity: 1 }}
+                    transition={{ duration: 0.8 }}
+                    className="rounded-xl overflow-hidden shadow-2xl border border-white/10 bg-[#1e1e1e]"
+                  >
+                      <div className="bg-[#252526] px-4 py-3 flex items-center gap-2 border-b border-black">
+                          <div className="flex gap-1.5">
+                              <div className="w-3 h-3 rounded-full bg-red-500" />
+                              <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                              <div className="w-3 h-3 rounded-full bg-green-500" />
+                          </div>
+                          <span className="ml-4 text-xs text-zinc-500 font-mono">src/App.tsx</span>
+                      </div>
+                      <div className="p-6 font-mono text-sm leading-relaxed overflow-hidden">
+                          <span className="text-pink-400">import</span> <span className="text-blue-300">React</span>, {'{'} <span className="text-yellow-300">useState</span> {'}'} <span className="text-pink-400">from</span> <span className="text-orange-300">'react'</span>;<br/>
+                          <br/>
+                          <span className="text-blue-400">export default function</span> <span className="text-yellow-300">App</span>() {'{'}<br/>
+                          &nbsp;&nbsp;<span className="text-blue-400">const</span> [<span className="text-blue-300">count</span>, <span className="text-yellow-300">setCount</span>] = <span className="text-yellow-300">useState</span>(<span className="text-green-300">0</span>);<br/>
+                          <br/>
+                          &nbsp;&nbsp;<span className="text-pink-400">return</span> (<br/>
+                          &nbsp;&nbsp;&nbsp;&nbsp;&lt;<span className="text-blue-300">div</span> <span className="text-blue-400">className</span>=<span className="text-orange-300">"p-4 bg-black text-white"</span>&gt;<br/>
+                          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;<span className="text-blue-300">h1</span>&gt;Hello MaxiGen&lt;/<span className="text-blue-300">h1</span>&gt;<br/>
+                          &nbsp;&nbsp;&nbsp;&nbsp;&lt;/<span className="text-blue-300">div</span>&gt;<br/>
+                          &nbsp;&nbsp;);<br/>
+                          {'}'}
+                          <motion.div 
+                            className="inline-block w-2 h-5 bg-white ml-1 align-middle"
+                            animate={{ opacity: [1, 0] }}
+                            transition={{ duration: 0.8, repeat: Infinity }}
+                          />
+                      </div>
+                  </motion.div>
+              </div>
+          </div>
+      </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[300px]">
-            {/* Feature 1: Multi-file */}
-            <motion.div 
-                whileHover={{ scale: 1.02 }}
-                className="md:col-span-2 rounded-[32px] bg-zinc-900/50 border border-white/10 p-8 flex flex-col relative overflow-hidden group"
-            >
-                <div className="absolute top-0 right-0 p-8 opacity-20 group-hover:opacity-40 transition-opacity">
-                    <Code2 size={120} />
-                </div>
-                <div className="relative z-10 mt-auto">
-                    <div className="w-12 h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center mb-4 text-blue-400">
-                        <Layers size={24} />
-                    </div>
-                    <h3 className="text-2xl font-bold mb-2">Multi-file Architecture</h3>
-                    <p className="text-zinc-400">Generates separate files for Components, Hooks, and Styles. No more spaghetti code.</p>
-                </div>
-            </motion.div>
+      {/* 6. INTEGRATIONS SECTION */}
+      <section className="py-20 bg-zinc-900 border-y border-white/5">
+          <div className="max-w-7xl mx-auto px-6 text-center">
+              <h2 className="text-4xl font-bold mb-16">Power your app with top-tier services</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
+                  {[
+                      { name: "Firebase", icon: <Database size={40} className="text-orange-500" /> },
+                      { name: "Vercel", icon: <Rocket size={40} className="text-black bg-white rounded-full p-1" /> },
+                      { name: "Stripe", icon: <DollarSign size={40} className="text-purple-500" /> },
+                      { name: "GitHub", icon: <Code2 size={40} className="text-white" /> }
+                  ].map((service, i) => (
+                      <motion.div 
+                        key={i}
+                        whileHover={{ scale: 1.1 }}
+                        className="flex flex-col items-center gap-4"
+                      >
+                          <div className="w-20 h-20 rounded-3xl bg-black border border-white/10 flex items-center justify-center shadow-xl">
+                              {service.icon}
+                          </div>
+                          <span className="font-bold text-lg">{service.name}</span>
+                      </motion.div>
+                  ))}
+              </div>
+          </div>
+      </section>
 
-            {/* Feature 2: Mobile & Web */}
-            <motion.div 
-                whileHover={{ scale: 1.02 }}
-                className="rounded-[32px] bg-zinc-900/50 border border-white/10 p-8 flex flex-col relative overflow-hidden"
-            >
-                <div className="absolute -right-4 -top-4 w-32 h-32 bg-purple-500/20 rounded-full blur-2xl" />
-                <div className="mt-auto">
-                    <div className="w-12 h-12 bg-purple-500/20 rounded-2xl flex items-center justify-center mb-4 text-purple-400">
-                        <Smartphone size={24} />
-                    </div>
-                    <h3 className="text-2xl font-bold mb-2">React Native & Web</h3>
-                    <p className="text-zinc-400">One prompt, two platforms. Export to Expo or Vite.</p>
-                </div>
-            </motion.div>
+      {/* 7. STATS SECTION */}
+      <section className="py-32 px-6">
+          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+              {[
+                  { label: "Apps Generated", value: "10k+", icon: <Layers className="mx-auto mb-4 text-purple-500" /> },
+                  { label: "Lines of Code", value: "2M+", icon: <Terminal className="mx-auto mb-4 text-blue-500" /> },
+                  { label: "Time Saved", value: "5000h", icon: <Timer className="mx-auto mb-4 text-green-500" /> }
+              ].map((stat, i) => (
+                  <motion.div 
+                    key={i}
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.1 }}
+                    className="p-8 rounded-2xl bg-zinc-900/50 border border-white/5"
+                  >
+                      {stat.icon}
+                      <div className="text-5xl font-bold mb-2">{stat.value}</div>
+                      <div className="text-zinc-500 uppercase tracking-widest text-sm">{stat.label}</div>
+                  </motion.div>
+              ))}
+          </div>
+      </section>
 
-            {/* Feature 3: Integrations */}
-            <motion.div 
-                whileHover={{ scale: 1.02 }}
-                className="rounded-[32px] bg-zinc-900/50 border border-white/10 p-8 flex flex-col relative overflow-hidden"
-            >
-                <div className="mt-auto">
-                    <div className="w-12 h-12 bg-green-500/20 rounded-2xl flex items-center justify-center mb-4 text-green-400">
-                        <Cpu size={24} />
-                    </div>
-                    <h3 className="text-2xl font-bold mb-2">Pre-built Integrations</h3>
-                    <p className="text-zinc-400">Connect RevenueCat, Firebase, and Supabase in one click.</p>
-                </div>
-            </motion.div>
+      {/* 8. TESTIMONIALS */}
+      <section className="py-20 px-6 bg-black">
+          <div className="max-w-7xl mx-auto">
+              <h2 className="text-4xl font-bold text-center mb-16">What builders are saying</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  {[
+                      { text: "I built my MVP in a weekend. The code quality is insane.", author: "Sarah J.", role: "Founder" },
+                      { text: "It's like having a senior dev sitting next to you 24/7.", author: "Mike T.", role: "CTO" },
+                      { text: "Finally, an AI that understands architecture, not just snippets.", author: "Alex R.", role: "Engineer" }
+                  ].map((t, i) => (
+                      <motion.div 
+                        key={i}
+                        whileHover={{ y: -10 }}
+                        className="p-8 rounded-[24px] bg-zinc-900 border border-white/10"
+                      >
+                          <div className="flex gap-1 text-yellow-500 mb-4">
+                              {[1,2,3,4,5].map(s => <Star key={s} size={16} fill="currentColor" />)}
+                          </div>
+                          <p className="text-lg leading-relaxed mb-6">"{t.text}"</p>
+                          <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-500 to-blue-500" />
+                              <div>
+                                  <div className="font-bold">{t.author}</div>
+                                  <div className="text-xs text-zinc-500">{t.role}</div>
+                              </div>
+                          </div>
+                      </motion.div>
+                  ))}
+              </div>
+          </div>
+      </section>
 
-            {/* Feature 4: Deployment */}
-            <motion.div 
-                whileHover={{ scale: 1.02 }}
-                className="md:col-span-2 rounded-[32px] bg-zinc-900/50 border border-white/10 p-8 flex flex-col relative overflow-hidden group"
-            >
-                <div className="absolute inset-0 bg-gradient-to-br from-black to-zinc-900 z-0" />
-                <div className="absolute right-0 top-0 bottom-0 w-1/2 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5" />
-                
-                <div className="relative z-10 mt-auto flex items-end justify-between">
-                    <div>
-                        <div className="w-12 h-12 bg-orange-500/20 rounded-2xl flex items-center justify-center mb-4 text-orange-400">
-                            <Rocket size={24} />
-                        </div>
-                        <h3 className="text-2xl font-bold mb-2">Instant Deployment</h3>
-                        <p className="text-zinc-400">Deploy your generated web apps directly to Vercel.</p>
-                    </div>
-                    <button className="bg-white text-black px-6 py-2 rounded-full font-bold text-sm hidden md:block group-hover:scale-105 transition-transform">
-                        Deploy Now
-                    </button>
-                </div>
-            </motion.div>
-        </div>
+      {/* 9. PRICING */}
+      <section id="pricing" className="py-32 px-6">
+          <div className="max-w-7xl mx-auto">
+              <h2 className="text-4xl font-bold text-center mb-4">Simple, Transparent Pricing</h2>
+              <p className="text-zinc-400 text-center mb-16">Start free, upgrade when you scale.</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+                  {/* Basic */}
+                  <div className="p-8 rounded-[32px] bg-zinc-900 border border-white/5">
+                      <h3 className="text-xl font-bold mb-2">Hobby</h3>
+                      <div className="text-4xl font-bold mb-6">$0<span className="text-lg font-normal text-zinc-500">/mo</span></div>
+                      <ul className="space-y-4 mb-8 text-zinc-400">
+                          <li className="flex gap-2"><CheckCircle2 size={18} /> 3 Projects</li>
+                          <li className="flex gap-2"><CheckCircle2 size={18} /> Basic Code Gen</li>
+                          <li className="flex gap-2"><CheckCircle2 size={18} /> Community Support</li>
+                      </ul>
+                      <button onClick={onGetStarted} className="w-full py-3 rounded-xl border border-white/20 hover:bg-white/10 font-bold transition-colors">Start Free</button>
+                  </div>
+
+                  {/* Pro */}
+                  <div className="p-8 rounded-[32px] bg-purple-900/20 border border-purple-500/50 relative overflow-hidden transform scale-105 shadow-2xl">
+                      <div className="absolute top-0 right-0 bg-purple-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">POPULAR</div>
+                      <h3 className="text-xl font-bold mb-2 text-purple-400">Pro</h3>
+                      <div className="text-4xl font-bold mb-6">$29<span className="text-lg font-normal text-zinc-500">/mo</span></div>
+                      <ul className="space-y-4 mb-8 text-zinc-300">
+                          <li className="flex gap-2"><CheckCircle2 size={18} className="text-purple-400" /> Unlimited Projects</li>
+                          <li className="flex gap-2"><CheckCircle2 size={18} className="text-purple-400" /> GPT-4 & Gemini Advanced</li>
+                          <li className="flex gap-2"><CheckCircle2 size={18} className="text-purple-400" /> Priority Deployment</li>
+                      </ul>
+                      <button onClick={onGetStarted} className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-colors shadow-lg shadow-purple-900/50">Get Pro</button>
+                  </div>
+
+                  {/* Enterprise */}
+                  <div className="p-8 rounded-[32px] bg-zinc-900 border border-white/5">
+                      <h3 className="text-xl font-bold mb-2">Enterprise</h3>
+                      <div className="text-4xl font-bold mb-6">$99<span className="text-lg font-normal text-zinc-500">/mo</span></div>
+                      <ul className="space-y-4 mb-8 text-zinc-400">
+                          <li className="flex gap-2"><CheckCircle2 size={18} /> Dedicated Support</li>
+                          <li className="flex gap-2"><CheckCircle2 size={18} /> Custom Integrations</li>
+                          <li className="flex gap-2"><CheckCircle2 size={18} /> SLA</li>
+                      </ul>
+                      <button onClick={onGetStarted} className="w-full py-3 rounded-xl border border-white/20 hover:bg-white/10 font-bold transition-colors">Contact Sales</button>
+                  </div>
+              </div>
+          </div>
+      </section>
+
+      {/* 10. FOOTER CTA */}
+      <section className="py-32 px-6 text-center bg-gradient-to-t from-purple-900/20 to-black">
+          <div className="max-w-4xl mx-auto">
+              <h2 className="text-5xl md:text-7xl font-bold mb-8">Ready to build your<br/>dream app?</h2>
+              <p className="text-xl text-zinc-400 mb-12">Join 10,000+ developers shipping faster with MaxiGen.</p>
+              <button 
+                onClick={onGetStarted}
+                className="px-12 py-5 bg-white text-black text-xl font-bold rounded-full hover:scale-105 transition-transform shadow-[0_0_50px_rgba(255,255,255,0.3)]"
+              >
+                  Start Building Now
+              </button>
+          </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 py-12 px-6 bg-black">
+      <footer className="border-t border-white/10 py-12 px-6 bg-black text-center md:text-left">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
                 <Zap size={20} className="text-white fill-white" />
                 <span className="font-bold text-lg">MaxiGen</span>
             </div>
-            <p className="text-zinc-500 text-sm">© 2025 MaxiGen AI. All rights reserved.</p>
+            <div className="flex gap-8 text-sm text-zinc-500">
+                <a href="#" className="hover:text-white">Privacy</a>
+                <a href="#" className="hover:text-white">Terms</a>
+                <a href="#" className="hover:text-white">Twitter</a>
+                <a href="#" className="hover:text-white">GitHub</a>
+            </div>
+            <p className="text-zinc-600 text-sm">© 2025 MaxiGen AI.</p>
         </div>
       </footer>
     </div>
