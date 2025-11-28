@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Zap, Mail, Lock, ArrowRight, Loader2, Github } from 'lucide-react';
-import { auth, githubProvider, yahooProvider } from '../services/firebaseConfig';
+import { auth, githubProvider, yahooProvider, twitterProvider } from '../services/firebaseConfig';
 import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
 interface LoginPageProps {
@@ -35,6 +35,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         await signInWithPopup(auth, githubProvider);
     } catch (err: any) {
         setError(err.message || 'Failed to sign in with GitHub');
+        setLoading(false);
+    }
+  };
+
+  const handleTwitterLogin = async () => {
+    setLoading(true);
+    setError('');
+    try {
+        await signInWithPopup(auth, twitterProvider);
+    } catch (err: any) {
+        setError(err.message || 'Failed to sign in with X');
         setLoading(false);
     }
   };
@@ -132,18 +143,32 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                             </>
                         )}
                     </button>
-                    <button 
-                        onClick={handleGithubLogin}
-                        disabled={loading}
-                        className="w-full h-12 bg-[#24292e] text-white rounded-xl font-bold text-sm flex items-center justify-center gap-3 hover:bg-[#2f363d] transition-colors border border-zinc-700"
-                    >
-                        {loading ? <Loader2 size={20} className="animate-spin" /> : (
-                            <>
-                                <Github size={20} />
-                                Continue with GitHub
-                            </>
-                        )}
-                    </button>
+                    <div className="flex gap-3">
+                        <button 
+                            onClick={handleGithubLogin}
+                            disabled={loading}
+                            className="flex-1 h-12 bg-[#24292e] text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#2f363d] transition-colors border border-zinc-700"
+                        >
+                            {loading ? <Loader2 size={20} className="animate-spin" /> : (
+                                <>
+                                    <Github size={20} />
+                                    GitHub
+                                </>
+                            )}
+                        </button>
+                        <button 
+                            onClick={handleTwitterLogin}
+                            disabled={loading}
+                            className="flex-1 h-12 bg-black text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-zinc-900 transition-colors border border-zinc-800"
+                        >
+                            {loading ? <Loader2 size={20} className="animate-spin" /> : (
+                                <>
+                                    <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18" fill="currentColor"><g><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></g></svg>
+                                    Login with X
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="relative">

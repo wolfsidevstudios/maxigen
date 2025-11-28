@@ -1,7 +1,7 @@
 
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { getAuth, GoogleAuthProvider, GithubAuthProvider, OAuthProvider } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, GithubAuthProvider, OAuthProvider, TwitterAuthProvider } from 'firebase/auth';
 
 // User provided configuration
 const firebaseConfig = {
@@ -23,5 +23,6 @@ export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 export const githubProvider = new GithubAuthProvider();
 export const yahooProvider = new OAuthProvider('yahoo.com');
+export const twitterProvider = new TwitterAuthProvider();
 
 export const isFirebaseReady = () => !!app;
