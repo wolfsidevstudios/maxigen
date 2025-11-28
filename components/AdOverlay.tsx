@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, Sparkles } from 'lucide-react';
@@ -23,7 +22,7 @@ export const AdOverlay: React.FC = () => {
                     s = d.createElement('script'),
                     l = placeholder; 
                 (s as any).settings = n || {};
-                s.src = "\/\/ornery-possible.com\/b\/XcVpsVd.G\/lw0LYNWqcP\/peEmQ9guQZZU\/likpPzTCYn3mMRTRYRwgM\/DtE-twNbjGc_x\/NrjRAnwoMug-";
+                s.src = "https://querulousbread.com/dfmRF.zpdqGENbvEZzGOUw/Ye/mB9/uRZbUplWkuP/T/YP3lM/T/YjwzMPT/cKt/N/j/cNx/NcjqA/xfOSAq";
                 s.async = true;
                 s.referrerPolicy = 'no-referrer-when-downgrade';
                 if (l.parentNode) {

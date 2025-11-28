@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { Sparkles, Zap, Smartphone, Globe, Code2, ArrowRight, Layers, Cpu, Rocket, Shield, CheckCircle2, Terminal, Database, Play, DollarSign, Users, Timer, Star } from 'lucide-react';
@@ -26,18 +25,29 @@ export const MarketingPage: React.FC<MarketingPageProps> = ({ onGetStarted }) =>
   const adRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-      if (!adRef.current || adRef.current.hasChildNodes()) return;
+      if (!adRef.current) return;
+      
+      // Clear any existing children to avoid duplicates if re-mounting
+      while(adRef.current.firstChild) {
+          adRef.current.removeChild(adRef.current.firstChild);
+      }
 
-      const anchor = document.createElement('div');
-      adRef.current.appendChild(anchor);
+      const anchorA = document.createElement('div');
+      anchorA.id = "ad-anchor-a";
+      adRef.current.appendChild(anchorA);
 
+      const anchorB = document.createElement('div');
+      anchorB.id = "ad-anchor-b";
+      adRef.current.appendChild(anchorB);
+
+      // Ad Script 1 (Display)
       try {
-          (function(dwq){
+          (function(sitsij){
               var d = document,
                   s = d.createElement('script'),
-                  l = anchor;
-              (s as any).settings = dwq || {};
-              s.src = "\/\/querulousbread.com\/c.DD9\/6_bY2K5xldSWWtQa9sN_jic\/xUNZTWku5LOnSD0t2FNHzVEu2QMmDrAMwT";
+                  l = anchorA;
+              (s as any).settings = sitsij || {};
+              s.src = "\/\/ornery-possible.com\/bhXFV.sYdOGDlL0UY\/WJcc\/jeHm-9YuCZDUxlckrPITHYa3FMsTCYTwdMqTxMOt\/NDjrc\/xJNnjqApx\/N_Aj";
               s.async = true;
               s.referrerPolicy = 'no-referrer-when-downgrade';
               if (l.parentNode) {
@@ -45,15 +55,34 @@ export const MarketingPage: React.FC<MarketingPageProps> = ({ onGetStarted }) =>
               }
           })({});
       } catch (e) {
-          console.error("Ad Error", e);
+          console.error("Ad 1 Error", e);
       }
+
+      // Ad Script 2 (Video)
+      try {
+           (function(n){
+                var d = document,
+                    s = d.createElement('script'),
+                    l = anchorB;
+                (s as any).settings = n || {};
+                s.src = "https://querulousbread.com/dfmRF.zpdqGENbvEZzGOUw/Ye/mB9/uRZbUplWkuP/T/YP3lM/T/YjwzMPT/cKt/N/j/cNx/NcjqA/xfOSAq";
+                s.async = true;
+                s.referrerPolicy = 'no-referrer-when-downgrade';
+                if (l.parentNode) {
+                    l.parentNode.insertBefore(s, l);
+                }
+            })({});
+      } catch(e) {
+          console.error("Ad 2 Error", e);
+      }
+
   }, []);
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-purple-500/30 font-sans overflow-x-hidden">
       
-      {/* Ad Container */}
-      <div ref={adRef} className="hidden" />
+      {/* Ad Container (Hidden but present for script injection) */}
+      <div ref={adRef} className="fixed bottom-0 right-0 w-px h-px opacity-0 pointer-events-none" />
 
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-xl border-b border-white/5">
