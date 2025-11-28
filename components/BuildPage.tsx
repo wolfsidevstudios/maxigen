@@ -197,11 +197,14 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
             };
         }
         
-        const hasMain = Object.keys(files).some(f => 
+        // Dynamic Entry Point Detection
+        let entryFile = Object.keys(files).find(f => 
             f === 'src/main.tsx' || f === 'src/main.jsx' || f === 'src/index.tsx' || f === 'src/index.jsx'
         );
 
-        if (!hasMain) {
+        if (!entryFile) {
+            // Create default main.tsx if missing
+            entryFile = 'src/main.tsx';
             files['src/main.tsx'] = `import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
@@ -219,6 +222,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             files['src/index.css'] = `@tailwind base;\n@tailwind components;\n@tailwind utilities;`;
         }
 
+        // Generate index.html pointing to the detected entry file
         files['index.html'] = `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -229,7 +233,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="/${entryFile}"></script>
   </body>
 </html>`;
 

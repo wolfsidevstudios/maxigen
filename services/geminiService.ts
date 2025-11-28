@@ -185,6 +185,10 @@ export const generateAppCode = async (
     - Grid System: 8px grid.
     - Spacing: generous padding (p-6, p-8).
     - Colors: Zinc neutrals + Vibrant Accents.
+
+    CRITICAL IMPORT RULE:
+    - Do not use '@/' alias for imports. Use relative paths (e.g., '../../components').
+    - Example: import Header from '../components/Header';
   `;
 
   const mobileInstructions = `
@@ -278,6 +282,7 @@ export const editAppCode = async (
     - KEEP 'src/main.tsx' and 'src/index.css'.
     - UI BOOST: rounded-[28px], padded images, soft shadows.
     - PAYMENTS: If key provided ("${revenueCatKey || ''}"), ensure RevenueCat is integrated.
+    - CRITICAL: Do NOT use '@/' alias for imports. Use relative paths.
     ${firebaseConfig ? `Config: ${firebaseConfig}` : ''}
   `;
   
