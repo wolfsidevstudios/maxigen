@@ -94,6 +94,7 @@ export const generateProjectPlan = async (
       2. Features: 3-5 bullet points, bold key terms.
       3. Tech Stack: HTML5, Tailwind CSS, Vanilla JavaScript.
       4. File Structure: Propose a clean structure (index.html, style.css, script.js).
+      5. Aesthetic: Dark Mode, Black/White/Grey, Glossy UI.
     `;
 
     try {
@@ -142,15 +143,27 @@ export const generateAppCode = async (
     CRITICAL: 
     - The user wants a **FRESH BUILD**. Do not assume previous files exist.
     - **DELETE OLD CODE**: The files you generate will completely replace any existing files.
-    - **MODERN UI**: Use 'Inter' font, rounded-[28px] cards, generous padding, glassmorphism, and smooth animations.
     - **EMOJIS**: Use emojis in your explanation to make it engaging.
     - **BOLD**: Use **bold** for important concepts in the explanation.
+
+    VISUAL GUIDELINES (STRICT):
+    - THEME: Ultra-Modern Dark Mode. Palette: Black (#000000), White (#FFFFFF), and Zinc Greys.
+    - BACKGROUNDS: Use 'bg-black' or 'bg-zinc-950' for the main page background.
+    - CARDS/CONTAINERS: Use "Frosted Glass" / "Glossy" effects. 
+      Example: 'bg-zinc-900/50 backdrop-blur-xl border border-white/10 shadow-xl'.
+    - TEXT: Primary text must be 'text-white'. Secondary text 'text-zinc-400'.
+    - SHAPES: Deep rounding. Use 'rounded-[24px]' or 'rounded-[32px]' for cards and containers.
+    - BUTTONS: 
+      - Primary: 'bg-white text-black hover:bg-zinc-200 rounded-full font-bold'.
+      - Secondary: 'bg-zinc-800/50 text-white border border-white/10 hover:bg-zinc-800 rounded-full'.
+    - BORDERS: Subtle and refined. 'border-white/5' or 'border-white/10'.
+    - INPUTS: 'bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-600 rounded-xl focus:ring-white/20'.
 
     Technologies:
        - HTML5
        - Tailwind CSS (via CDN)
        - Vanilla JavaScript (ES6+)
-       - FontAwesome or similar via CDN if needed
+       - FontAwesome or Lucide (via CDN) if needed
        
     MEDIA & IMAGES (MANDATORY):
     - NEVER use placeholder URLs like placehold.co.
@@ -161,6 +174,13 @@ export const generateAppCode = async (
     - Config provided. Implement REAL Authentication and Firestore using Firebase JS SDK (ES Modules via CDN).
     - Initialize app in 'firebase.js' or 'script.js'.
     ` : `- Simulate Auth if requested.`}
+    
+    REVENUECAT:
+    ${revenueCatKey ? `
+    - Key provided: ${revenueCatKey}
+    - Implement REAL in-app subscriptions using RevenueCat Web SDK (@revenuecat/purchases-js via CDN/ESM).
+    - Create a 'paywall.js' or similar to handle displaying packages and purchasing.
+    ` : ''}
   `;
 
   // --- WEB INSTRUCTIONS (HTML/CSS/JS) ---
@@ -171,7 +191,7 @@ export const generateAppCode = async (
 
     Expected Structure:
     1. 'index.html' (Main entry point. MUST include <script src="https://cdn.tailwindcss.com"></script>)
-    2. 'style.css' (Custom styles if needed)
+    2. 'style.css' (Custom styles for glassmorphism/animations if needed)
     3. 'script.js' (Interactive logic)
     4. 'README.md' (Optional instructions)
 
@@ -272,7 +292,7 @@ export const editAppCode = async (
     RULES:
     - MODIFY the 'files' array to reflect changes.
     - If it's a web app, ensure you maintain 'index.html', 'script.js', etc.
-    - UI BOOST: rounded-[28px], padded images, soft shadows.
+    - VISUALS: Maintain the "MaxiGen Aesthetic": Dark Mode, Black/White/Grey, Glossy/Frosted UI, rounded-[28px] cards.
     ${firebaseConfig ? `Config: ${firebaseConfig}` : ''}
   `;
   
