@@ -21,6 +21,7 @@ import { auth } from './services/firebaseConfig';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth'; 
 import { Integration } from './services/integrationsService';
 import { ChatMessage, AppState, CanvasApp, Platform, Page, UserProfile, Project, GenerationMode, ViewMode, AIModel, GeneratedApp } from './types';
+import { AdOverlay } from './components/AdOverlay';
 
 // ... (Keep existing LandingPageProps interface and LandingPage component code exactly as is) ...
 interface LandingPageProps {
@@ -1030,6 +1031,13 @@ export default function App() {
                 onPointerUp={handlePointerUp}
                 onPointerLeave={handlePointerUp}
             >
+                {/* Ad Overlay when generating */}
+                <AnimatePresence>
+                    {state === AppState.GENERATING && (
+                        <AdOverlay />
+                    )}
+                </AnimatePresence>
+
                 {viewMode === 'design' ? (
                     <>
                         <div 

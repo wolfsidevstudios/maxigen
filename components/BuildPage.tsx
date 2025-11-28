@@ -10,6 +10,7 @@ import { AudioWave } from './AudioWave';
 import { speechToText } from '../services/speechService';
 import { Integration } from '../services/integrationsService';
 import { GeneratedApp, AppState, ChatMessage, ProjectFile, ProjectPlan } from '../types';
+import { AdOverlay } from './AdOverlay';
 
 // Sandpack
 import {
@@ -459,6 +460,11 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
 
       {/* RIGHT PANEL */}
       <div className="flex-1 bg-black relative overflow-hidden flex flex-col">
+          {/* Ad Overlay when generating */}
+          <AnimatePresence>
+            {state === AppState.GENERATING && <AdOverlay />}
+          </AnimatePresence>
+          
           {app ? (
             <div className="flex-1 flex flex-col h-full">
                 <div className="h-14 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-6 shrink-0">
