@@ -391,46 +391,34 @@ export const MarketingPage: React.FC<MarketingPageProps> = ({ onGetStarted }) =>
 
       {/* 9. PRICING */}
       <section id="pricing" className="py-32 px-6">
-          <div className="max-w-7xl mx-auto">
-              <h2 className="text-4xl font-bold text-center mb-4">Simple, Transparent Pricing</h2>
-              <p className="text-zinc-400 text-center mb-16">Start free, upgrade when you scale.</p>
+          <div className="max-w-5xl mx-auto">
+              <h2 className="text-4xl font-bold text-center mb-4">Simple Plans</h2>
+              <p className="text-zinc-400 text-center mb-16">Choose the right plan for your needs.</p>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
-                  {/* Basic */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center max-w-4xl mx-auto">
+                  {/* Free Plan */}
                   <div className="p-8 rounded-[32px] bg-zinc-900 border border-white/5">
-                      <h3 className="text-xl font-bold mb-2">Hobby</h3>
+                      <h3 className="text-xl font-bold mb-2">Free</h3>
                       <div className="text-4xl font-bold mb-6">$0<span className="text-lg font-normal text-zinc-500">/mo</span></div>
                       <ul className="space-y-4 mb-8 text-zinc-400">
                           <li className="flex gap-2"><CheckCircle2 size={18} /> 3 Projects</li>
-                          <li className="flex gap-2"><CheckCircle2 size={18} /> Basic Code Gen</li>
+                          <li className="flex gap-2"><CheckCircle2 size={18} /> Bring your own API Key</li>
                           <li className="flex gap-2"><CheckCircle2 size={18} /> Community Support</li>
                       </ul>
                       <button onClick={onGetStarted} className="w-full py-3 rounded-xl border border-white/20 hover:bg-white/10 font-bold transition-colors">Start Free</button>
                   </div>
 
-                  {/* Pro */}
+                  {/* Plus Plan */}
                   <div className="p-8 rounded-[32px] bg-purple-900/20 border border-purple-500/50 relative overflow-hidden transform scale-105 shadow-2xl">
                       <div className="absolute top-0 right-0 bg-purple-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">POPULAR</div>
-                      <h3 className="text-xl font-bold mb-2 text-purple-400">Pro</h3>
-                      <div className="text-4xl font-bold mb-6">$29<span className="text-lg font-normal text-zinc-500">/mo</span></div>
+                      <h3 className="text-xl font-bold mb-2 text-purple-400">Plus</h3>
+                      <div className="text-4xl font-bold mb-6">$19<span className="text-lg font-normal text-zinc-500">/mo</span></div>
                       <ul className="space-y-4 mb-8 text-zinc-300">
                           <li className="flex gap-2"><CheckCircle2 size={18} className="text-purple-400" /> Unlimited Projects</li>
-                          <li className="flex gap-2"><CheckCircle2 size={18} className="text-purple-400" /> GPT-4 & Gemini Advanced</li>
-                          <li className="flex gap-2"><CheckCircle2 size={18} className="text-purple-400" /> Priority Deployment</li>
+                          <li className="flex gap-2"><CheckCircle2 size={18} className="text-purple-400" /> <strong>No API Key Required</strong></li>
+                          <li className="flex gap-2"><CheckCircle2 size={18} className="text-purple-400" /> Priority Support</li>
                       </ul>
-                      <button onClick={onGetStarted} className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-colors shadow-lg shadow-purple-900/50">Get Pro</button>
-                  </div>
-
-                  {/* Enterprise */}
-                  <div className="p-8 rounded-[32px] bg-zinc-900 border border-white/5">
-                      <h3 className="text-xl font-bold mb-2">Enterprise</h3>
-                      <div className="text-4xl font-bold mb-6">$99<span className="text-lg font-normal text-zinc-500">/mo</span></div>
-                      <ul className="space-y-4 mb-8 text-zinc-400">
-                          <li className="flex gap-2"><CheckCircle2 size={18} /> Dedicated Support</li>
-                          <li className="flex gap-2"><CheckCircle2 size={18} /> Custom Integrations</li>
-                          <li className="flex gap-2"><CheckCircle2 size={18} /> SLA</li>
-                      </ul>
-                      <button onClick={onGetStarted} className="w-full py-3 rounded-xl border border-white/20 hover:bg-white/10 font-bold transition-colors">Contact Sales</button>
+                      <button onClick={onGetStarted} className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-colors shadow-lg shadow-purple-900/50">Get Plus</button>
                   </div>
               </div>
           </div>
