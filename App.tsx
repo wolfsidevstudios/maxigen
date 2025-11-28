@@ -1,5 +1,4 @@
 
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Zap, ArrowRight, Layout, MousePointer2, ZoomIn, ZoomOut, RotateCcw, Trash2, X, Pencil, Plus, Mic, AudioLines, ArrowUp, Smartphone, Monitor, Layers, PenTool, MousePointer, Square, Image as ImageIcon, Undo2, Redo2, MoreHorizontal, Sparkles, Copy, Bot, Link as LinkIcon, Palette, Globe, Database, Cpu, Settings, Play, Rocket } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,9 +15,13 @@ import { IntegrationsModal } from './components/IntegrationsModal';
 import { MobileSimulator } from './components/MobileSimulator';
 import { DeployView } from './components/DeployView';
 import { MarketingPage } from './components/MarketingPage';
+import { LoginPage } from './components/LoginPage'; // New Import
+import { auth } from './services/firebaseConfig'; // Auth Import
+import { onAuthStateChanged, User } from 'firebase/auth'; // Auth Import
 import { Integration } from './services/integrationsService';
 import { ChatMessage, AppState, CanvasApp, Platform, Page, UserProfile, Project, GenerationMode, ViewMode, AIModel, GeneratedApp } from './types';
 
+// ... (Keep existing LandingPageProps interface and LandingPage component code exactly as is) ...
 interface LandingPageProps {
   onSearch: (text: string, image?: string, mode?: GenerationMode, url?: string) => void;
   platform: Platform;
@@ -354,9 +357,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSearch, platform, setPlatfo
   );
 };
 
+// Define View States
+type ViewState = 'marketing' | 'login' | 'app';
+
 export default function App() {
   // Navigation & User State
-  const [activePage, setActivePage] = useState<Page>('marketing');
+  const [viewState, setViewState] = useState<ViewState>('marketing');
+  const [user, setUser] = useState<User | null>(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
+
+  const [activePage, setActivePage] = useState<Page>('home');
   const [userProfile, setUserProfile] = useState<UserProfile>({
       name: "Designer",
       handle: "@designer_ai",
@@ -401,6 +411,27 @@ export default function App() {
   
   const canvasRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // AUTH LISTENER
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        setUser(currentUser);
+        setLoadingAuth(false);
+        if (currentUser) {
+            // User logged in
+            setUserProfile(prev => ({
+                ...prev,
+                name: currentUser.displayName || 'Designer',
+                avatarUrl: currentUser.photoURL || prev.avatarUrl,
+                handle: currentUser.email ? `@${currentUser.email.split('@')[0]}` : prev.handle
+            }));
+            if (viewState === 'login') {
+                setViewState('app');
+            }
+        }
+    });
+    return () => unsubscribe();
+  }, [viewState]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -656,13 +687,26 @@ export default function App() {
     }
   };
 
-  if (activePage === 'marketing') {
-      return <MarketingPage onGetStarted={() => setActivePage('home')} />;
+  // --- ROUTING LOGIC ---
+
+  if (loadingAuth) {
+    return <div className="h-screen w-full bg-black flex items-center justify-center text-white"><Loader2 className="animate-spin" /></div>;
   }
 
+  // 1. Marketing Page (Public)
+  if (viewState === 'marketing') {
+      return <MarketingPage onGetStarted={() => setViewState(user ? 'app' : 'login')} />;
+  }
+
+  // 2. Login Page
+  if (viewState === 'login' && !user) {
+      return <LoginPage onLoginSuccess={() => setViewState('app')} />;
+  }
+
+  // 3. Main App (Private)
   if (messages.length === 0 && canvasApps.length === 0 && activePage === 'home') {
       return (
-        <div className="flex h-screen w-full bg-black font-sans selection:bg-white selection:text-black">
+        <div className="flex h-screen w-full bg-black font-sans selection:bg-white selection:text-black overflow-hidden">
             <Sidebar activePage={activePage} onNavigate={setActivePage} recentProjects={projects} onNewProject={handleNewProject} />
             <div className="flex-1 relative overflow-hidden bg-black">
                 <LandingPage 

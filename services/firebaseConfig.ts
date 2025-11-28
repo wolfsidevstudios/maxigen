@@ -1,26 +1,25 @@
+
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 
-// ------------------------------------------------------------------
-// CONFIGURATION INSTRUCTIONS:
-// 1. Create a project at https://console.firebase.google.com/
-// 2. Enable "Firestore Database" in the Firebase Console.
-// 3. Copy your web app configuration below.
-// ------------------------------------------------------------------
-
+// User provided configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef"
+    apiKey: "AIzaSyALmX4xk9t4PbRK_3MSl3wxMyEayK9tbBI",
+    authDomain: "wolfsi-studios.firebaseapp.com",
+    projectId: "wolfsi-studios",
+    storageBucket: "wolfsi-studios.firebasestorage.app",
+    messagingSenderId: "562922803230",
+    appId: "1:562922803230:web:e3140287e5d7f7dc275e0f",
+    measurementId: "G-P591NJDE4J"
 };
 
-// We wrap initialization in a check so the app doesn't crash if config is missing.
-const isConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 
-export const app = isConfigured ? initializeApp(firebaseConfig) : null;
-export const db = isConfigured && app ? getFirestore(app) : null;
+// Exports
+export const db = getFirestore(app);
+export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
 
-export const isFirebaseReady = () => !!db;
+export const isFirebaseReady = () => !!app;
