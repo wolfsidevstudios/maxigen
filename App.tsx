@@ -17,7 +17,7 @@ import { DeployView } from './components/DeployView';
 import { MarketingPage } from './components/MarketingPage';
 import { LoginPage } from './components/LoginPage'; // New Import
 import { auth } from './services/firebaseConfig'; // Auth Import
-import { onAuthStateChanged, User } from 'firebase/auth'; // Auth Import
+import { onAuthStateChanged, User, signOut } from 'firebase/auth'; // Auth Import
 import { Integration } from './services/integrationsService';
 import { ChatMessage, AppState, CanvasApp, Platform, Page, UserProfile, Project, GenerationMode, ViewMode, AIModel, GeneratedApp } from './types';
 
@@ -433,6 +433,17 @@ export default function App() {
     return () => unsubscribe();
   }, [viewState]);
 
+  const handleLogout = async () => {
+    try {
+        await signOut(auth);
+        setUser(null);
+        setViewState('marketing'); // Go back to marketing page on logout
+        setActivePage('home');
+    } catch (error) {
+        console.error("Logout error", error);
+    }
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -754,7 +765,12 @@ export default function App() {
         )}
         
         {activePage === 'settings' && (
-            <SettingsPage currentModel={aiModel} onModelChange={setAiModel} />
+            <SettingsPage 
+                currentModel={aiModel} 
+                onModelChange={setAiModel} 
+                user={user} 
+                onLogout={handleLogout} 
+            />
         )}
 
         {activePage === 'build' && (
