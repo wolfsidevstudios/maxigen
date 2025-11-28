@@ -82,6 +82,7 @@ export interface UserProfile {
   handle: string;
   bio: string;
   avatarUrl: string;
+  credits: number;
 }
 
 export interface Project {

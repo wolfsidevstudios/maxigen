@@ -8,6 +8,7 @@ interface SidebarProps {
   onNavigate: (page: Page) => void;
   recentProjects: Project[];
   onNewProject: () => void;
+  credits: number;
 }
 
 // Deterministic Abstract Icon Generator based on string hash
@@ -34,7 +35,7 @@ const GeneratedIcon: React.FC<{ name: string }> = ({ name }) => {
     );
 };
 
-export const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, recentProjects, onNewProject }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, recentProjects, onNewProject, credits }) => {
   return (
     <div className="w-[60px] md:w-[72px] h-screen bg-black border-r border-zinc-800 flex flex-col items-center py-6 z-50 flex-shrink-0">
       {/* Logo */}
@@ -111,10 +112,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, recent
         )}
       </div>
 
+      {/* Credits Indicator */}
+      <div className="mt-auto mb-4 w-full px-2 flex flex-col items-center">
+          <div className="bg-zinc-900 rounded-lg p-2 w-full flex flex-col items-center border border-zinc-800">
+              <Zap size={16} className={credits > 0 ? "text-yellow-400 fill-yellow-400" : "text-zinc-600"} />
+              <span className="text-[10px] font-bold mt-1 text-zinc-300">{credits}</span>
+          </div>
+      </div>
+
       {/* Settings */}
       <button 
         onClick={() => onNavigate('settings')}
-        className={`mt-auto p-3 rounded-xl transition-all ${activePage === 'settings' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'}`}
+        className={`mb-2 p-3 rounded-xl transition-all ${activePage === 'settings' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'}`}
       >
         <Settings size={24} />
       </button>

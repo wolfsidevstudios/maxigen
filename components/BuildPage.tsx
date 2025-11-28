@@ -140,9 +140,10 @@ interface BuildPageProps {
   onProjectCreated?: (app: GeneratedApp) => void;
   initialPrompt?: string | null;
   onPromptHandled?: () => void;
+  checkCredits: () => boolean;
 }
 
-export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialPrompt, onPromptHandled }) => {
+export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialPrompt, onPromptHandled, checkCredits }) => {
   const [input, setInput] = useState('');
   const [state, setState] = useState<AppState>(AppState.IDLE);
   const [app, setApp] = useState<GeneratedApp | null>(null);
@@ -245,6 +246,9 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
 
   const handleSubmit = async (text: string) => {
     if (!text.trim() || state === AppState.GENERATING || state === AppState.PLANNING) return;
+    
+    // Credit Check
+    if (!checkCredits()) return;
 
     const userMsg: ChatMessage = { role: 'user', content: text, timestamp: Date.now() };
     setMessages(prev => [...prev, userMsg]);

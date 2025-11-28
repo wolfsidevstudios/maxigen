@@ -22,6 +22,7 @@ import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { Integration } from './services/integrationsService';
 import { ChatMessage, AppState, CanvasApp, Platform, Page, UserProfile, Project, GenerationMode, ViewMode, AIModel, GeneratedApp } from './types';
 import { AdOverlay } from './components/AdOverlay';
+import { CreditsModal } from './components/CreditsModal';
 
 // ... (Keep existing LandingPageProps interface and LandingPage component code exactly as is) ...
 interface LandingPageProps {
@@ -373,9 +374,13 @@ export default function App() {
       name: "Designer",
       handle: "@designer_ai",
       bio: "Building the future with MaxiGen.",
-      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
+      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
+      credits: 3 // Initialize with free credits
   });
   const [projects, setProjects] = useState<Project[]>([]);
+  
+  // Credits Management
+  const [showCreditsModal, setShowCreditsModal] = useState(false);
 
   // Core App State
   const [input, setInput] = useState('');
@@ -445,6 +450,20 @@ export default function App() {
     } catch (error) {
         console.error("Logout error", error);
     }
+  };
+
+  const checkAndConsumeCredit = (): boolean => {
+      if (userProfile.credits > 0) {
+          setUserProfile(prev => ({ ...prev, credits: prev.credits - 1 }));
+          return true;
+      } else {
+          setShowCreditsModal(true);
+          return false;
+      }
+  };
+
+  const handleRewardCredits = () => {
+      setUserProfile(prev => ({ ...prev, credits: prev.credits + 3 }));
   };
 
   const scrollToBottom = () => {
@@ -523,6 +542,9 @@ export default function App() {
 
   const processInput = async (text: string, image?: string, mode?: GenerationMode, url?: string) => {
     if ((!text.trim() && !image) || state === AppState.GENERATING) return;
+
+    // Credit Check
+    if (!checkAndConsumeCredit()) return;
 
     const usedMode = mode || generationMode;
 
@@ -727,7 +749,7 @@ export default function App() {
   if (messages.length === 0 && canvasApps.length === 0 && activePage === 'home') {
       return (
         <div className="flex h-screen w-full bg-black font-sans selection:bg-white selection:text-black overflow-hidden">
-            <Sidebar activePage={activePage} onNavigate={setActivePage} recentProjects={projects} onNewProject={handleNewProject} />
+            <Sidebar activePage={activePage} onNavigate={setActivePage} recentProjects={projects} onNewProject={handleNewProject} credits={userProfile.credits} />
             <div className="flex-1 relative overflow-hidden bg-black">
                 <LandingPage 
                     onSearch={processInput} 
@@ -745,6 +767,12 @@ export default function App() {
                 onClose={() => setShowIntegrationsModal(false)}
                 onAdd={handleAddIntegration}
             />
+            
+            <CreditsModal 
+                isOpen={showCreditsModal}
+                onClose={() => setShowCreditsModal(false)}
+                onReward={handleRewardCredits}
+            />
         </div>
       );
   }
@@ -752,7 +780,7 @@ export default function App() {
   return (
     <div className="h-screen bg-black text-white flex overflow-hidden font-sans selection:bg-white selection:text-black">
       
-      <Sidebar activePage={activePage} onNavigate={setActivePage} recentProjects={projects} onNewProject={handleNewProject} />
+      <Sidebar activePage={activePage} onNavigate={setActivePage} recentProjects={projects} onNewProject={handleNewProject} credits={userProfile.credits} />
       
       <AnnotationModal 
         isOpen={showAnnotationModal}
@@ -765,6 +793,12 @@ export default function App() {
          isOpen={showIntegrationsModal} 
          onClose={() => setShowIntegrationsModal(false)}
          onAdd={handleAddIntegration}
+      />
+
+      <CreditsModal 
+          isOpen={showCreditsModal}
+          onClose={() => setShowCreditsModal(false)}
+          onReward={handleRewardCredits}
       />
 
       <div className="flex-1 flex flex-col md:flex-row relative overflow-hidden">
@@ -787,6 +821,7 @@ export default function App() {
                 onProjectCreated={handleBuildProjectCreated} 
                 initialPrompt={pendingBuildPrompt}
                 onPromptHandled={() => setPendingBuildPrompt(null)}
+                checkCredits={checkAndConsumeCredit}
             />
         )}
 
