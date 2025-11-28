@@ -180,7 +180,6 @@ export const generateAppCode = async (
     2. '/src/App.tsx' (Main Component)
     3. '/src/index.css' (Tailwind directives)
     4. '/src/components/...' (Break UI into small, reusable components)
-    5. '/package.json' (Dependencies)
     
     Design Philosophy:
     - Grid System: 8px grid.

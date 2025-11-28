@@ -182,6 +182,13 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
             app.files.forEach((file: ProjectFile) => {
                 let path = file.path;
                 if (path.startsWith('/')) path = path.substring(1);
+                
+                // IMPORTANT: Filter out config files from AI to prevent Sandpack runtime errors.
+                // We rely on sandpackCustomSetup for environment stability.
+                if (['package.json', 'package-lock.json', 'yarn.lock', 'vite.config.js', 'vite.config.ts', 'tsconfig.json'].includes(path)) {
+                    return;
+                }
+                
                 files[path] = file.content;
             });
         } else {
@@ -343,7 +350,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         "tailwind-merge": "latest",
         "firebase": "latest",
         "@revenuecat/purchases-js": "latest",
-        "react-router-dom": "latest"
+        "react-router-dom": "latest",
+        "recharts": "latest",
+        "date-fns": "latest",
+        "esbuild-wasm": "0.21.5"
     },
   };
 
