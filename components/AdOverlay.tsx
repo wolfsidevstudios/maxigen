@@ -12,7 +12,9 @@ export const AdOverlay: React.FC = () => {
         // Safety check to prevent double injection
         if (adRef.current.hasChildNodes()) return;
 
-        const placeholder = document.createElement('script');
+        // Create a placeholder element to anchor the script injection
+        const placeholder = document.createElement('div');
+        placeholder.id = "ad-placeholder";
         adRef.current.appendChild(placeholder);
 
         try {
@@ -31,6 +33,10 @@ export const AdOverlay: React.FC = () => {
         } catch(e) {
             console.error("Ad Error", e);
         }
+        
+        return () => {
+            // Cleanup handled by React unmounting the parent div usually
+        };
     }, []);
 
     return (
@@ -38,46 +44,39 @@ export const AdOverlay: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[100] bg-zinc-950 flex flex-col items-center justify-center p-6"
+            className="absolute inset-0 z-[100] bg-zinc-950/90 backdrop-blur-sm flex flex-col items-center justify-center p-6"
         >
-            <div className="w-full max-w-2xl bg-zinc-900/50 rounded-2xl border border-zinc-800 p-1 overflow-hidden shadow-2xl">
+            <div className="w-full max-w-2xl bg-zinc-900 rounded-2xl border border-zinc-800 overflow-hidden shadow-2xl relative">
                  {/* Header */}
-                 <div className="bg-zinc-900 px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
-                     <div className="flex items-center gap-2">
-                         <div className="relative">
-                             <div className="absolute inset-0 bg-blue-500 blur opacity-50 animate-pulse"></div>
-                             <Loader2 size={16} className="text-blue-400 animate-spin relative z-10" />
+                 <div className="bg-zinc-950 px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
+                     <div className="flex items-center gap-3">
+                         <div className="relative flex items-center justify-center w-8 h-8">
+                             <div className="absolute inset-0 bg-blue-500 blur-lg opacity-50 animate-pulse"></div>
+                             <Loader2 size={20} className="text-blue-400 animate-spin relative z-10" />
                          </div>
-                         <span className="text-sm font-bold text-white tracking-wide">Generating App...</span>
+                         <div>
+                             <h3 className="text-sm font-bold text-white tracking-wide">Building your App</h3>
+                             <p className="text-xs text-zinc-500">This may take a few seconds...</p>
+                         </div>
                      </div>
-                     <div className="flex gap-1.5">
-                         <div className="w-2 h-2 rounded-full bg-red-500/20"></div>
-                         <div className="w-2 h-2 rounded-full bg-yellow-500/20"></div>
-                         <div className="w-2 h-2 rounded-full bg-green-500/20"></div>
-                     </div>
-                 </div>
-                 
-                 {/* Ad Area */}
-                 <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
-                     {/* Ad Script Container */}
-                     <div ref={adRef} className="absolute inset-0 flex items-center justify-center z-10" />
-                     
-                     {/* Background Animation (if ad takes time to load) */}
-                     <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
-                         <Sparkles className="text-zinc-700 w-16 h-16 animate-pulse" />
+                     <div className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 rounded-full border border-zinc-800">
+                         <Sparkles size={12} className="text-purple-400" />
+                         <span className="text-[10px] font-medium text-zinc-400">AI Processing</span>
                      </div>
                  </div>
 
+                 {/* Ad Container */}
+                 <div className="p-8 flex flex-col items-center justify-center bg-black min-h-[300px]">
+                     <div ref={adRef} className="w-full h-full flex items-center justify-center text-zinc-700 text-sm">
+                         {/* Script injects here */}
+                     </div>
+                 </div>
+                 
                  {/* Footer */}
-                 <div className="bg-zinc-900/50 px-4 py-3 flex justify-between items-center text-[10px] text-zinc-500 uppercase tracking-widest font-medium">
-                     <span>AI Processing</span>
-                     <span>Sponsored Preview</span>
+                 <div className="bg-zinc-950 px-6 py-3 border-t border-zinc-800 text-center">
+                     <p className="text-[10px] text-zinc-600 uppercase tracking-widest">Sponsored Content</p>
                  </div>
             </div>
-            
-            <p className="mt-6 text-zinc-500 text-sm animate-pulse font-medium">
-                Designing interfaces • Writing code • Configuring database
-            </p>
         </motion.div>
     );
 };

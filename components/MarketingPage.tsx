@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { Sparkles, Zap, Smartphone, Globe, Code2, ArrowRight, Layers, Cpu, Rocket, Shield, CheckCircle2, Terminal, Database, Play, DollarSign, Users, Timer, Star } from 'lucide-react';
 
@@ -23,10 +23,38 @@ const itemVariants = {
 export const MarketingPage: React.FC<MarketingPageProps> = ({ onGetStarted }) => {
   const { scrollYProgress } = useScroll();
   const y = useTransform(scrollYProgress, [0, 1], [0, -50]);
+  const adRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+      if (!adRef.current || adRef.current.hasChildNodes()) return;
+
+      const anchor = document.createElement('div');
+      adRef.current.appendChild(anchor);
+
+      try {
+          (function(dwq){
+              var d = document,
+                  s = d.createElement('script'),
+                  l = anchor;
+              (s as any).settings = dwq || {};
+              s.src = "\/\/querulousbread.com\/c.DD9\/6_bY2K5xldSWWtQa9sN_jic\/xUNZTWku5LOnSD0t2FNHzVEu2QMmDrAMwT";
+              s.async = true;
+              s.referrerPolicy = 'no-referrer-when-downgrade';
+              if (l.parentNode) {
+                  l.parentNode.insertBefore(s, l);
+              }
+          })({});
+      } catch (e) {
+          console.error("Ad Error", e);
+      }
+  }, []);
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-purple-500/30 font-sans overflow-x-hidden">
       
+      {/* Ad Container */}
+      <div ref={adRef} className="hidden" />
+
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
