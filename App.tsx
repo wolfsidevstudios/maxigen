@@ -15,9 +15,10 @@ import { IntegrationsModal } from './components/IntegrationsModal';
 import { MobileSimulator } from './components/MobileSimulator';
 import { DeployView } from './components/DeployView';
 import { MarketingPage } from './components/MarketingPage';
-import { LoginPage } from './components/LoginPage'; // New Import
-import { auth } from './services/firebaseConfig'; // Auth Import
-import { onAuthStateChanged, User, signOut } from 'firebase/auth'; // Auth Import
+import { TemplatesPage } from './components/TemplatesPage'; // New Import
+import { LoginPage } from './components/LoginPage'; 
+import { auth } from './services/firebaseConfig'; 
+import { onAuthStateChanged, User, signOut } from 'firebase/auth'; 
 import { Integration } from './services/integrationsService';
 import { ChatMessage, AppState, CanvasApp, Platform, Page, UserProfile, Project, GenerationMode, ViewMode, AIModel, GeneratedApp } from './types';
 
@@ -482,6 +483,13 @@ export default function App() {
       }, ...prev]);
   };
 
+  const handleUseTemplate = (prompt: string, templatePlatform: 'web' | 'mobile') => {
+      handleNewProject(); // Clear workspace
+      setPlatform(templatePlatform);
+      setActivePage('home');
+      processInput(prompt);
+  };
+
   // Auto-select app when switching to Prototype mode
   useEffect(() => {
       if ((viewMode === 'prototype' || viewMode === 'deploy') && !selectedAppId && canvasApps.length > 0) {
@@ -775,6 +783,10 @@ export default function App() {
 
         {activePage === 'build' && (
             <BuildPage onProjectCreated={handleBuildProjectCreated} />
+        )}
+
+        {activePage === 'templates' && (
+            <TemplatesPage onUseTemplate={handleUseTemplate} />
         )}
 
         {activePage === 'home' && (

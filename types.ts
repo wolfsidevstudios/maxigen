@@ -64,7 +64,7 @@ export interface BuildJob {
   createdAt: number;
 }
 
-export type Page = 'marketing' | 'home' | 'projects' | 'settings' | 'build';
+export type Page = 'marketing' | 'home' | 'projects' | 'settings' | 'build' | 'templates';
 
 export interface UserProfile {
   name: string;

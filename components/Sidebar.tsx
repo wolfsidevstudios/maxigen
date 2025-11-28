@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, Layers, Clock, Settings, Zap, Plus, Hammer } from 'lucide-react';
+import { Home, Layers, Clock, Settings, Zap, Plus, Hammer, LayoutTemplate } from 'lucide-react';
 import { Page, Project } from '../types';
 
 interface SidebarProps {
@@ -59,6 +59,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, recent
             title="Design Home"
         >
             <Home size={24} strokeWidth={activePage === 'home' ? 2.5 : 2} />
+        </button>
+        <button 
+            onClick={() => onNavigate('templates')}
+            className={`p-3 rounded-xl transition-all ${activePage === 'templates' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'}`}
+            title="Templates"
+        >
+            <LayoutTemplate size={24} strokeWidth={activePage === 'templates' ? 2.5 : 2} />
         </button>
         <button 
             onClick={() => onNavigate('build')}
