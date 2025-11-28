@@ -1,15 +1,15 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Rocket, Monitor, ArrowUp, Loader2, Play, Plus, Mic, Terminal, Code2, LayoutDashboard, Database, ImageIcon, Hammer, RefreshCw } from 'lucide-react';
-import { generateAppCode, editAppCode } from '../services/geminiService';
+import { Rocket, Monitor, ArrowUp, Loader2, Play, Plus, Mic, Code2, LayoutDashboard, Database, ImageIcon, Hammer, CheckCircle2, FileText, Layers, Zap } from 'lucide-react';
+import { generateAppCode, editAppCode, generateProjectPlan } from '../services/geminiService';
 import { ConsoleViewer } from './ConsoleViewer';
 import { DashboardView } from './DashboardView';
 import { IntegrationsModal } from './IntegrationsModal';
 import { AudioWave } from './AudioWave';
 import { speechToText } from '../services/speechService';
 import { Integration } from '../services/integrationsService';
-import { GeneratedApp, AppState, ChatMessage, ProjectFile } from '../types';
+import { GeneratedApp, AppState, ChatMessage, ProjectFile, ProjectPlan } from '../types';
 
 // Sandpack
 import {
@@ -18,7 +18,6 @@ import {
   SandpackPreview,
   SandpackFileExplorer,
   SandpackCodeEditor,
-  SandpackConsole,
 } from "@codesandbox/sandpack-react";
 
 type Tab = 'preview' | 'code' | 'dashboard';
@@ -156,6 +155,9 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Stored Prompt for Planning Phase
+  const [originalPrompt, setOriginalPrompt] = useState('');
 
   // Sandpack files state
   const [sandpackFiles, setSandpackFiles] = useState<Record<string, string>>({});
@@ -176,29 +178,23 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
     if (app) {
         let files: Record<string, string> = {};
         
-        // 1. Process Files from AI
         if (app.files && app.files.length > 0) {
             app.files.forEach((file: ProjectFile) => {
                 let path = file.path;
-                // Normalize path to remove leading slash if present, Sandpack expects relative or root-relative
                 if (path.startsWith('/')) path = path.substring(1);
                 files[path] = file.content;
             });
         } else {
-            // Fallback for single file or legacy: Place in src/App.tsx
             files = {
                 "src/App.tsx": app.webCompatibleCode || app.reactNativeCode,
             };
         }
         
-        // 2. Ensure Entry Point (main.tsx) exists
-        // Check if any standard entry file is present
         const hasMain = Object.keys(files).some(f => 
             f === 'src/main.tsx' || f === 'src/main.jsx' || f === 'src/index.tsx' || f === 'src/index.jsx'
         );
 
         if (!hasMain) {
-            // Inject default main.tsx
             files['src/main.tsx'] = `import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
@@ -212,17 +208,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 `;
         }
 
-        // 3. Ensure index.css exists (even if empty to prevent import error in main.tsx)
         if (!files['src/index.css']) {
-            files['src/index.css'] = `
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-            `;
+            files['src/index.css'] = `@tailwind base;\n@tailwind components;\n@tailwind utilities;`;
         }
 
-        // 4. Force index.html to point to src/main.tsx and include Tailwind CDN
-        // We overwrite this to ensure the preview works, as the AI might miss the script tag
         files['index.html'] = `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -267,26 +256,60 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   };
 
   const handleSubmit = async (text: string) => {
-    if (!text.trim() || state === AppState.GENERATING) return;
+    if (!text.trim() || state === AppState.GENERATING || state === AppState.PLANNING) return;
 
     const userMsg: ChatMessage = { role: 'user', content: text, timestamp: Date.now() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
-    setState(AppState.GENERATING);
-    setConsoleLogs([]); 
+    
+    // If we already have an app, this is an EDIT
+    if (app) {
+        setState(AppState.GENERATING);
+        const firebaseConfig = localStorage.getItem('firebase_config') || undefined;
+        const revenueCatKey = localStorage.getItem('revenuecat_key') || undefined;
+        try {
+            const updatedApp = await editAppCode(app, userMsg.content, undefined, 'gemini-2.5-flash', firebaseConfig, revenueCatKey);
+            setApp(updatedApp);
+            const aiMsg: ChatMessage = { role: 'assistant', content: `**Update Complete** 🛠️\n\n${updatedApp.explanation}`, appData: updatedApp, timestamp: Date.now() };
+            setMessages(prev => [...prev, aiMsg]);
+            setState(AppState.SUCCESS);
+        } catch (error) {
+            setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I encountered an error during the update. Please try again. 🛑", timestamp: Date.now() }]);
+            setState(AppState.ERROR);
+        }
+    } else {
+        // NEW APP: Start Planning Phase
+        setState(AppState.PLANNING);
+        setOriginalPrompt(text);
+        try {
+            const plan = await generateProjectPlan(text);
+            const aiMsg: ChatMessage = { 
+                role: 'assistant', 
+                content: `I've created a plan for your app! Check it out below 👇`, 
+                plan: plan, 
+                timestamp: Date.now() 
+            };
+            setMessages(prev => [...prev, aiMsg]);
+        } catch (error) {
+            setMessages(prev => [...prev, { role: 'assistant', content: "I had trouble creating a plan. Let's try building directly.", timestamp: Date.now() }]);
+            // Fallback to direct build if plan fails
+            handleApprovePlan(text);
+        }
+    }
+  };
 
-    const firebaseConfig = localStorage.getItem('firebase_config') || undefined;
-    const revenueCatKey = localStorage.getItem('revenuecat_key') || undefined;
+  const handleApprovePlan = async (promptToUse?: string) => {
+      const prompt = promptToUse || originalPrompt;
+      setState(AppState.GENERATING);
+      setConsoleLogs([]); 
+      // Clear files to ensure fresh build
+      setSandpackFiles({}); 
 
-    try {
-      if (app) {
-          const updatedApp = await editAppCode(app, userMsg.content, undefined, 'gemini-2.5-flash', firebaseConfig, revenueCatKey);
-          setApp(updatedApp);
-          const aiMsg: ChatMessage = { role: 'assistant', content: `Updated ${updatedApp.name}: ${updatedApp.explanation}`, appData: updatedApp, timestamp: Date.now() };
-          setMessages(prev => [...prev, aiMsg]);
-      } else {
-          // Default to 'web' platform for BuildPage
-          const { screens, explanation, edgeFunctions } = await generateAppCode(userMsg.content, 'web', undefined, 'default', undefined, 'gemini-2.5-flash', firebaseConfig, revenueCatKey);
+      const firebaseConfig = localStorage.getItem('firebase_config') || undefined;
+      const revenueCatKey = localStorage.getItem('revenuecat_key') || undefined;
+
+      try {
+          const { screens, explanation, edgeFunctions } = await generateAppCode(prompt, 'web', undefined, 'default', undefined, 'gemini-2.5-flash', firebaseConfig, revenueCatKey);
           const newApp = { ...screens[0], edgeFunctions };
           setApp(newApp);
           const aiMsg: ChatMessage = { role: 'assistant', content: explanation, appData: newApp, timestamp: Date.now() };
@@ -295,40 +318,23 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           if (onProjectCreated) {
               onProjectCreated(newApp);
           }
+          setState(AppState.SUCCESS);
+      } catch (error) {
+          setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I couldn't build that app. Please try again. 🛑", timestamp: Date.now() }]);
+          setState(AppState.ERROR);
       }
-      setState(AppState.SUCCESS);
-    } catch (error) {
-      const errorMsg: ChatMessage = { role: 'assistant', content: "Sorry, I couldn't build that app. Please try again.", timestamp: Date.now() };
-      setMessages(prev => [...prev, errorMsg]);
-      setState(AppState.ERROR);
-    }
   };
 
-  // SHOW LANDING PAGE IF NO APP
-  if (!app && state === AppState.IDLE) {
+  // SHOW LANDING PAGE IF NO APP AND NO MESSAGES
+  if (!app && messages.length === 0 && state === AppState.IDLE) {
       return (
           <>
             <BuildHome onStart={handleSubmit} />
-            {state === AppState.GENERATING && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-                    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center">
-                        <div className="relative w-24 h-24 mb-6">
-                            <div className="absolute inset-0 bg-purple-500 rounded-full animate-ping opacity-25"></div>
-                            <div className="relative w-full h-full bg-zinc-900 rounded-[24px] shadow-xl border border-zinc-800 flex items-center justify-center overflow-hidden">
-                                <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-gradient-to-tr from-purple-500 to-blue-500 rounded-full blur-xl opacity-50"></div>
-                                <Loader2 size={32} className="text-purple-400 animate-spin relative z-10" />
-                            </div>
-                        </div>
-                        <h2 className="text-2xl font-bold text-white mb-2">Constructing App</h2>
-                        <p className="text-zinc-400 text-sm">Writing React components & configuring backend...</p>
-                    </motion.div>
-                </div>
-            )}
           </>
       );
   }
 
-  // Sandpack specific custom setup
+  // Sandpack setup
   const sandpackCustomSetup = {
     dependencies: {
         "lucide-react": "latest",
@@ -344,7 +350,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   return (
     <div className="flex-1 flex flex-col md:flex-row h-screen overflow-hidden bg-black">
       {/* LEFT PANEL */}
-      <div className="w-full md:w-[400px] flex flex-col border-r border-zinc-800 h-[40vh] md:h-screen bg-zinc-950 shadow-xl z-20">
+      <div className="w-full md:w-[450px] flex flex-col border-r border-zinc-800 h-[40vh] md:h-screen bg-zinc-950 shadow-xl z-20">
         <div className="h-16 flex items-center px-6 border-b border-zinc-800 bg-zinc-950 sticky top-0 z-20 justify-between">
             <div className="flex items-center gap-2"><div className="p-1.5 bg-white text-black rounded-lg"><Rocket size={16} /></div><h1 className="font-bold text-sm tracking-tight text-white">React Builder</h1></div>
             <div className="bg-amber-900/30 text-amber-400 px-2 py-0.5 rounded text-[10px] font-bold border border-amber-500/30 uppercase tracking-wide">Beta</div>
@@ -353,13 +359,74 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 custom-scrollbar pb-32 bg-zinc-950">
             {messages.map((msg, i) => (
                 <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                    <div className={`max-w-[90%] px-4 py-3 text-[13px] leading-relaxed shadow-sm rounded-2xl ${msg.role === 'user' ? 'bg-white text-black rounded-br-sm' : 'bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-bl-sm'}`}>{msg.content}</div>
+                    {msg.plan ? (
+                        <div className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl">
+                             <div className="h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+                             <div className="p-6">
+                                 <h3 className="text-xl font-bold text-white mb-1">{msg.plan.title}</h3>
+                                 <p className="text-sm text-zinc-400 mb-6">{msg.plan.targetAudience}</p>
+                                 
+                                 <div className="space-y-6">
+                                     <div>
+                                         <h4 className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-3 flex items-center gap-2"><CheckCircle2 size={12} /> Key Features</h4>
+                                         <ul className="space-y-2">
+                                             {msg.plan.features.map((feat, idx) => (
+                                                 <li key={idx} className="text-sm text-zinc-300 flex items-start gap-2">
+                                                     <span className="mt-1.5 w-1.5 h-1.5 bg-zinc-600 rounded-full shrink-0"></span>
+                                                     {feat}
+                                                 </li>
+                                             ))}
+                                         </ul>
+                                     </div>
+                                     
+                                     <div>
+                                         <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-3 flex items-center gap-2"><Layers size={12} /> Tech Stack</h4>
+                                         <div className="flex flex-wrap gap-2">
+                                             {msg.plan.techStack.map((tech, idx) => (
+                                                 <span key={idx} className="px-2 py-1 bg-zinc-800 border border-zinc-700 rounded-md text-xs text-zinc-300">{tech}</span>
+                                             ))}
+                                         </div>
+                                     </div>
+                                     
+                                     <div>
+                                          <h4 className="text-xs font-bold text-green-400 uppercase tracking-wider mb-3 flex items-center gap-2"><FileText size={12} /> Structure</h4>
+                                          <div className="bg-zinc-950 p-3 rounded-lg border border-zinc-800">
+                                              {msg.plan.fileStructureSummary.map((file, idx) => (
+                                                  <div key={idx} className="text-xs font-mono text-zinc-500 mb-1 last:mb-0 border-l border-zinc-800 pl-2 ml-1">
+                                                      {file}
+                                                  </div>
+                                              ))}
+                                          </div>
+                                     </div>
+                                 </div>
+                                 
+                                 <button 
+                                    onClick={() => handleApprovePlan()}
+                                    className="mt-8 w-full py-3 bg-white text-black rounded-xl font-bold hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2"
+                                 >
+                                     <Rocket size={18} /> Approve & Build
+                                 </button>
+                             </div>
+                        </div>
+                    ) : (
+                        <div className={`max-w-[95%] px-5 py-4 text-[13px] leading-relaxed shadow-sm rounded-2xl whitespace-pre-wrap ${msg.role === 'user' ? 'bg-white text-black rounded-br-sm' : 'bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-bl-sm'}`}>
+                            {msg.content}
+                        </div>
+                    )}
                 </div>
             ))}
+            
+            {state === AppState.PLANNING && (
+                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mx-4 bg-zinc-900 rounded-[24px] p-4 border border-zinc-800 shadow-lg flex items-center gap-4 w-fit pr-8">
+                    <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center border border-purple-500/20"><LayoutDashboard size={20} className="text-purple-400 animate-pulse" /></div>
+                    <div className="flex flex-col"><span className="font-bold text-sm text-white">Drafting Plan</span><span className="text-[10px] text-zinc-500 font-medium">Architecting solution...</span></div>
+                 </motion.div>
+            )}
+
             {state === AppState.GENERATING && (
-                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mx-4 bg-zinc-900 rounded-[24px] p-3 border border-zinc-800 shadow-lg flex items-center gap-3 w-fit pr-6">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-900/50 to-blue-500/20 flex items-center justify-center shadow-inner border border-blue-500/20"><Loader2 size={18} className="text-blue-400 animate-spin" /></div>
-                    <div className="flex flex-col"><span className="font-bold text-sm text-white">Updating app</span><span className="text-[10px] text-zinc-500 font-medium">Writing React components...</span></div>
+                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mx-4 bg-zinc-900 rounded-[24px] p-4 border border-zinc-800 shadow-lg flex items-center gap-4 w-fit pr-8">
+                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/20"><Loader2 size={20} className="text-blue-400 animate-spin" /></div>
+                    <div className="flex flex-col"><span className="font-bold text-sm text-white">Building App</span><span className="text-[10px] text-zinc-500 font-medium">Writing React components...</span></div>
                  </motion.div>
             )}
             <div ref={messagesEndRef} />
@@ -371,9 +438,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     <textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Describe changes..."
+                        placeholder="Type a message..."
                         className="w-full bg-transparent text-sm p-4 min-h-[50px] max-h-[120px] resize-none outline-none text-white placeholder:text-zinc-600 font-medium custom-scrollbar"
-                        disabled={state === AppState.GENERATING}
+                        disabled={state === AppState.GENERATING || state === AppState.PLANNING}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(input); } }}
                     />
                     <div className="flex items-center justify-between px-3 pb-3">
@@ -395,12 +462,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                                 className="p-2 rounded-full transition-colors hover:bg-purple-900/30 text-purple-400" 
                                 title="Boost UI"
                              >
-                                <Rocket size={18} />
+                                <Zap size={18} />
                              </button>
                         </div>
                         <div className="flex items-center gap-2">
                             <button onClick={handleMicClick} className={`p-2 rounded-full transition-colors flex items-center justify-center ${isListening ? 'bg-zinc-800 text-white' : 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-300'}`}>{isListening ? <AudioWave /> : <Mic size={18} />}</button>
-                            <button onClick={() => handleSubmit(input)} disabled={!input.trim() || state === AppState.GENERATING} className="h-8 w-8 bg-white hover:bg-zinc-200 rounded-full flex items-center justify-center text-black transition-all shadow-sm active:scale-95 disabled:opacity-30">{state === AppState.GENERATING ? <Loader2 size={14} className="animate-spin" /> : <ArrowUp size={16} strokeWidth={2.5} />}</button>
+                            <button onClick={() => handleSubmit(input)} disabled={!input.trim() || state === AppState.GENERATING || state === AppState.PLANNING} className="h-8 w-8 bg-white hover:bg-zinc-200 rounded-full flex items-center justify-center text-black transition-all shadow-sm active:scale-95 disabled:opacity-30">{state === AppState.GENERATING || state === AppState.PLANNING ? <Loader2 size={14} className="animate-spin" /> : <ArrowUp size={16} strokeWidth={2.5} />}</button>
                         </div>
                     </div>
                 </div>
@@ -411,9 +478,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
       {/* RIGHT PANEL */}
       <div className="flex-1 bg-black relative overflow-hidden flex flex-col">
+          {app ? (
             <div className="flex-1 flex flex-col h-full">
                 <div className="h-14 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-6 shrink-0">
-                        <div className="flex items-center gap-3"><div className="text-sm font-bold text-white">{app?.name}</div><div className="h-4 w-px bg-zinc-800" /><div className="flex items-center gap-1 text-xs text-zinc-500"><Monitor size={12} /><span>Web Build</span></div></div>
+                        <div className="flex items-center gap-3"><div className="text-sm font-bold text-white">{app.name}</div><div className="h-4 w-px bg-zinc-800" /><div className="flex items-center gap-1 text-xs text-zinc-500"><Monitor size={12} /><span>Web Build</span></div></div>
                         <div className="flex items-center gap-3"><button onClick={() => setActiveTab('dashboard')} className="bg-white text-black px-5 py-2 rounded-full text-xs font-bold shadow-sm hover:bg-zinc-200 transition-all flex items-center gap-2"><Rocket size={12} /> Publish</button></div>
                 </div>
                 
@@ -465,7 +533,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                         </div>
                     )}
 
-                    {activeTab === 'dashboard' && app && <DashboardView app={app} onUpdateApp={(updates) => setApp({...app, ...updates})} onDeploySuccess={setDeploymentUrl} deploymentUrl={deploymentUrl} />}
+                    {activeTab === 'dashboard' && <DashboardView app={app} onUpdateApp={(updates) => setApp({...app, ...updates})} onDeploySuccess={setDeploymentUrl} deploymentUrl={deploymentUrl} />}
                     
                     {/* Tab Switcher */}
                     <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-zinc-900/90 backdrop-blur-md border border-zinc-800 shadow-xl rounded-full p-1.5 flex gap-1 z-30">
@@ -475,6 +543,15 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     </div>
                 </div>
             </div>
+          ) : (
+            <div className="h-full w-full flex flex-col items-center justify-center bg-zinc-950 text-zinc-500">
+                <div className="w-24 h-24 bg-zinc-900 rounded-3xl mb-6 flex items-center justify-center border border-zinc-800 shadow-xl">
+                    <Monitor size={48} className="opacity-20" />
+                </div>
+                <h3 className="text-xl font-bold text-zinc-300 mb-2">Ready to Build</h3>
+                <p className="max-w-xs text-center text-sm">Your app preview will appear here once the planning phase is complete.</p>
+            </div>
+          )}
       </div>
     </div>
   );

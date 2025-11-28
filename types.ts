@@ -20,6 +20,15 @@ export interface ProjectFile {
     content: string;
 }
 
+export interface ProjectPlan {
+  title: string;
+  targetAudience: string;
+  features: string[];
+  techStack: string[];
+  fileStructureSummary: string[];
+  colorPalette: string[];
+}
+
 export interface GeneratedApp {
   reactNativeCode: string; // Legacy field, now used as fallback or main entry
   webCompatibleCode: string; // Single-file preview version
@@ -35,6 +44,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   appData?: GeneratedApp;
+  plan?: ProjectPlan; // New Plan field
   attachment?: string; // Base64 image
   timestamp: number;
   sources?: { title: string; uri: string }[];
@@ -43,6 +53,7 @@ export interface ChatMessage {
 
 export enum AppState {
   IDLE = 'IDLE',
+  PLANNING = 'PLANNING', // New State
   GENERATING = 'GENERATING',
   ERROR = 'ERROR',
   SUCCESS = 'SUCCESS'
