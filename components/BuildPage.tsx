@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Rocket, Monitor, ArrowUp, Loader2, Play, Plus, Mic, Terminal, Code2, LayoutDashboard, Database, ImageIcon, Hammer, RefreshCw } from 'lucide-react';
@@ -387,6 +386,7 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated }) => {
                                 template="vite-react"
                                 theme="dark"
                                 files={sandpackFiles}
+                                style={{ height: '100%' }}
                                 options={{
                                     externalResources: ["https://cdn.tailwindcss.com"],
                                     classes: {
@@ -396,7 +396,7 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated }) => {
                                 }}
                                 customSetup={sandpackCustomSetup}
                             >
-                                <SandpackLayout className="h-full border-none rounded-none bg-zinc-900">
+                                <SandpackLayout style={{ height: '100%' }} className="h-full border-none rounded-none bg-zinc-900">
                                     {activeTab === 'code' && (
                                         <>
                                             <SandpackFileExplorer className="h-full border-r border-zinc-800 bg-zinc-950" />
