@@ -94,7 +94,7 @@ export const generateProjectPlan = async (
       2. Features: 3-5 bullet points, bold key terms.
       3. Tech Stack: HTML5, Tailwind CSS, Vanilla JavaScript.
       4. File Structure: Propose a clean structure (index.html, style.css, script.js).
-      5. Aesthetic: Dark Mode, Black/White/Grey, Glossy UI.
+      5. Aesthetic: Modern, Google Fonts (Poppins), Material Design influence.
     `;
 
     try {
@@ -146,28 +146,34 @@ export const generateAppCode = async (
     - **EMOJIS**: Use emojis in your explanation to make it engaging.
     - **BOLD**: Use **bold** for important concepts in the explanation.
 
-    VISUAL GUIDELINES (STRICT):
-    - THEME: Ultra-Modern Dark Mode. Palette: Black (#000000), White (#FFFFFF), and Zinc Greys.
-    - BACKGROUNDS: Use 'bg-black' or 'bg-zinc-950' for the main page background.
+    VISUAL GUIDELINES (STRICT & MODERN):
+    - THEME: Ultra-Modern. Prefer Dark Mode unless specified. Palette: Black (#000000), White (#FFFFFF), and Zinc Greys.
+    - TYPOGRAPHY: Use 'Poppins' for Headings and 'Inter' for Body text. Use 'Roboto Mono' for code.
+    - ICONS: Use Google Material Symbols Outlined (via CDN) for a polished look. Class: 'material-symbols-outlined'.
+    
+    LANDING PAGE VISUALS:
+    - **DO NOT** use generic placeholder image URLs (like placehold.co) for the main visual elements (Hero backgrounds, feature graphics) unless strictly necessary for a specific photo (e.g. a person).
+    - **GENERATE CODE-BASED VISUALS**: Instead of images, create modern visuals using:
+      - CSS Gradients (conic, linear, radial) and blurs.
+      - Tailwind patterns (grid, dots).
+      - Inline SVGs for abstract shapes, blobs, or illustrations.
+      - Canvas drawing for dynamic effects if appropriate.
     - CARDS/CONTAINERS: Use "Frosted Glass" / "Glossy" effects. 
       Example: 'bg-zinc-900/50 backdrop-blur-xl border border-white/10 shadow-xl'.
-    - TEXT: Primary text must be 'text-white'. Secondary text 'text-zinc-400'.
     - SHAPES: Deep rounding. Use 'rounded-[24px]' or 'rounded-[32px]' for cards and containers.
     - BUTTONS: 
       - Primary: 'bg-white text-black hover:bg-zinc-200 rounded-full font-bold'.
       - Secondary: 'bg-zinc-800/50 text-white border border-white/10 hover:bg-zinc-800 rounded-full'.
-    - BORDERS: Subtle and refined. 'border-white/5' or 'border-white/10'.
     - INPUTS: 'bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-600 rounded-xl focus:ring-white/20'.
 
     Technologies:
        - HTML5
        - Tailwind CSS (via CDN)
        - Vanilla JavaScript (ES6+)
-       - FontAwesome or Lucide (via CDN) if needed
+       - Google Fonts & Material Symbols (via CDN)
        
-    MEDIA & IMAGES (MANDATORY):
-    - NEVER use placeholder URLs like placehold.co.
-    - USE THIS FORMAT FOR IMAGES: "https://maxigen.media/image?q=SEARCH_TERM" (e.g. "https://maxigen.media/image?q=modern office")
+    MEDIA & IMAGES (IF PHOTO REQUIRED):
+    - USE THIS FORMAT FOR PHOTOS: "https://maxigen.media/image?q=SEARCH_TERM" (e.g. "https://maxigen.media/image?q=modern office")
     
     FIREBASE:
     ${firebaseConfig ? `
@@ -190,15 +196,19 @@ export const generateAppCode = async (
     IMPORTANT: You MUST generate a full MULTI-FILE structure in the 'files' array.
 
     Expected Structure:
-    1. 'index.html' (Main entry point. MUST include <script src="https://cdn.tailwindcss.com"></script>)
-    2. 'style.css' (Custom styles for glassmorphism/animations if needed)
+    1. 'index.html' (Main entry point.)
+       - MUST include Tailwind CDN: <script src="https://cdn.tailwindcss.com"></script>
+       - MUST include Google Fonts Link: <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+       - MUST include Material Symbols Link: <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+       - Add Tailwind config script to set font families: 
+         tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'], heading: ['Poppins', 'sans-serif'], mono: ['Roboto Mono', 'monospace'] } } } }
+    2. 'style.css' (Custom styles for glassmorphism/animations, .material-symbols-outlined settings)
     3. 'script.js' (Interactive logic)
     4. 'README.md' (Optional instructions)
 
     CRITICAL RULES:
     - DO NOT use React, JSX, or 'import' statements that require a bundler (unless using ES modules browser-natively).
     - Use standard ES6 JavaScript.
-    - Use Tailwind CSS for styling via the CDN link in the <head>.
     - Ensure 'index.html' links to 'style.css' (<link rel="stylesheet">) and 'script.js' (<script src="script.js" defer></script>).
     - Do not use '@/' alias for imports.
   `;
@@ -207,6 +217,8 @@ export const generateAppCode = async (
     PLATFORM: MOBILE (React Native / Expo)
     - Generate VALID Expo React Native code.
     - Use <View>, <Text>, <TouchableOpacity>, <SafeAreaView>.
+    - For icons, you can use Lucide-React (imports available).
+    - Apply the modern design principles (rounded corners, dark mode, glassmorphism) using style objects or NativeWind classes if compatible.
   `;
 
   const systemInstruction = `
@@ -292,7 +304,8 @@ export const editAppCode = async (
     RULES:
     - MODIFY the 'files' array to reflect changes.
     - If it's a web app, ensure you maintain 'index.html', 'script.js', etc.
-    - VISUALS: Maintain the "MaxiGen Aesthetic": Dark Mode, Black/White/Grey, Glossy/Frosted UI, rounded-[28px] cards.
+    - VISUALS: Maintain the "MaxiGen Aesthetic": Dark Mode, Poppins/Inter fonts, Google Material Symbols, Glossy/Frosted UI, rounded-[28px] cards.
+    - PREFER CODE VISUALS (CSS/SVG) over external images for landing page graphics.
     ${firebaseConfig ? `Config: ${firebaseConfig}` : ''}
   `;
   

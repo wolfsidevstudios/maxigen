@@ -38,6 +38,11 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({ code, refreshK
           <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
           <!-- Lucide Icons -->
           <script src="https://unpkg.com/lucide@0.292.0"></script>
+          <!-- Google Fonts & Material Symbols -->
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+          <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
           
           <style>
             body { 
@@ -47,6 +52,13 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({ code, refreshK
                 font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
                 -webkit-font-smoothing: antialiased;
             }
+            .font-poppins { font-family: 'Poppins', sans-serif; }
+            .font-mono { font-family: 'Roboto Mono', monospace; }
+            
+            .material-symbols-outlined {
+              font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            }
+
             ::-webkit-scrollbar { width: 0px; background: transparent; }
             #root { height: 100%; display: flex; flex-direction: column; }
             
@@ -94,6 +106,8 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({ code, refreshK
                   },
                   fontFamily: {
                     sans: ['Inter', 'sans-serif'],
+                    heading: ['Poppins', 'sans-serif'],
+                    mono: ['Roboto Mono', 'monospace'],
                   }
                 }
               }
