@@ -4,8 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { GeneratedApp } from '../types';
 import { DeployView } from './DeployView';
 import { EdgeFunctionViewer } from './EdgeFunctionViewer';
-import { Settings, Database, Code2, Globe, Calendar, Layers, Github, Key, CheckCircle, ExternalLink, AlertTriangle, GitBranch, UploadCloud, Zap, DollarSign, CreditCard, Save } from 'lucide-react';
+import { Settings, Database, Code2, Globe, Calendar, Layers, Github, Key, CheckCircle, ExternalLink, AlertTriangle, GitBranch, UploadCloud, Zap, DollarSign, CreditCard, Save, Music, Image, Video, Film, Cloud, Newspaper, Radio, Share2 } from 'lucide-react';
 import { getGitHubUser, createRepo, pushFile, GitHubUser } from '../services/githubService';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface DashboardViewProps {
   app: GeneratedApp;
@@ -14,8 +15,78 @@ interface DashboardViewProps {
   deploymentUrl: string;
 }
 
+const SERVICE_CONFIGS = [
+    {
+        id: 'spotify',
+        name: 'Spotify',
+        description: 'Access music, playlists, and user playback data.',
+        icon: <Music size={24} className="text-green-400" />,
+        fields: [
+            { key: 'spotify_client_id', label: 'Client ID', type: 'text' },
+            { key: 'spotify_client_secret', label: 'Client Secret', type: 'password' }
+        ],
+        link: 'https://developer.spotify.com/dashboard'
+    },
+    {
+        id: 'pexels',
+        name: 'Pexels',
+        description: 'Free stock photos and videos API.',
+        icon: <Image size={24} className="text-teal-400" />,
+        fields: [{ key: 'pexels_key', label: 'API Key', type: 'password' }],
+        link: 'https://www.pexels.com/api/'
+    },
+    {
+        id: 'giphy',
+        name: 'Giphy',
+        description: 'Animated GIFs and stickers library.',
+        icon: <Film size={24} className="text-purple-400" />,
+        fields: [{ key: 'giphy_key', label: 'API Key', type: 'password' }],
+        link: 'https://developers.giphy.com/'
+    },
+    {
+        id: 'freesound',
+        name: 'Freesound',
+        description: 'Collaborative database of audio snippets and samples.',
+        icon: <Radio size={24} className="text-yellow-400" />,
+        fields: [{ key: 'freesound_key', label: 'API Key', type: 'password' }],
+        link: 'https://freesound.org/help/developers/'
+    },
+    {
+        id: 'freeimage',
+        name: 'FreeImage.host',
+        description: 'Free image hosting and uploading API.',
+        icon: <UploadCloud size={24} className="text-blue-400" />,
+        fields: [{ key: 'freeimage_key', label: 'API Key', type: 'password' }],
+        link: 'https://freeimage.host/page/api'
+    },
+    {
+        id: 'tmdb',
+        name: 'TMDB',
+        description: 'The Movie Database for film and TV metadata.',
+        icon: <Video size={24} className="text-pink-400" />,
+        fields: [{ key: 'tmdb_key', label: 'API Key', type: 'password' }],
+        link: 'https://www.themoviedb.org/documentation/api'
+    },
+    {
+        id: 'weather',
+        name: 'OpenWeather',
+        description: 'Current weather and forecast data.',
+        icon: <Cloud size={24} className="text-sky-400" />,
+        fields: [{ key: 'openweather_key', label: 'API Key', type: 'password' }],
+        link: 'https://openweathermap.org/api'
+    },
+    {
+        id: 'newsapi',
+        name: 'NewsAPI',
+        description: 'Search worldwide news articles.',
+        icon: <Newspaper size={24} className="text-red-400" />,
+        fields: [{ key: 'newsapi_key', label: 'API Key', type: 'password' }],
+        link: 'https://newsapi.org/'
+    }
+];
+
 export const DashboardView: React.FC<DashboardViewProps> = ({ app, onUpdateApp, onDeploySuccess, deploymentUrl }) => {
-  const [activeSection, setActiveSection] = useState<'overview' | 'deploy' | 'github' | 'edge' | 'monetization'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'deploy' | 'github' | 'edge' | 'monetization' | 'apis'>('overview');
   const [nameInput, setNameInput] = useState(app.name);
   
   // GitHub State
@@ -30,6 +101,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ app, onUpdateApp, 
   const [rcKey, setRcKey] = useState('');
   const [rcSaved, setRcSaved] = useState(false);
 
+  // APIs State
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
+  const [openServiceId, setOpenServiceId] = useState<string | null>(null);
+  const [savedServiceId, setSavedServiceId] = useState<string | null>(null);
+
   useEffect(() => {
       const savedToken = localStorage.getItem('github_token');
       if (savedToken) {
@@ -38,6 +114,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ app, onUpdateApp, 
       }
       const savedRc = localStorage.getItem('revenuecat_key');
       if (savedRc) setRcKey(savedRc);
+
+      // Load all service keys
+      const keys: Record<string, string> = {};
+      SERVICE_CONFIGS.forEach(s => {
+          s.fields.forEach(f => {
+              const val = localStorage.getItem(f.key);
+              if (val) keys[f.key] = val;
+          });
+      });
+      setApiKeys(keys);
   }, []);
 
   const fetchUser = async (token: string) => {
@@ -62,6 +148,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ app, onUpdateApp, 
     localStorage.setItem('revenuecat_key', rcKey);
     setRcSaved(true);
     setTimeout(() => setRcSaved(false), 2000);
+  };
+
+  const handleSaveServiceKeys = (serviceId: string) => {
+      const config = SERVICE_CONFIGS.find(s => s.id === serviceId);
+      if(config) {
+          config.fields.forEach(f => {
+              if (apiKeys[f.key]) {
+                  localStorage.setItem(f.key, apiKeys[f.key]);
+              }
+          });
+          setSavedServiceId(serviceId);
+          setTimeout(() => setSavedServiceId(null), 2000);
+      }
   };
 
   const handleCreateRepo = async () => {
@@ -111,7 +210,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ app, onUpdateApp, 
             >
                 <Github size={14} /> GitHub
             </button>
-            <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2 mt-4 px-2">Backend</div>
+            <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2 mt-4 px-2">Config</div>
+            <button 
+                onClick={() => setActiveSection('apis')}
+                className={`text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors ${activeSection === 'apis' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white hover:bg-zinc-900'}`}
+            >
+                <Share2 size={14} /> APIs & Services
+            </button>
             <button 
                 onClick={() => setActiveSection('edge')}
                 className={`text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors ${activeSection === 'edge' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white hover:bg-zinc-900'}`}
@@ -191,6 +296,79 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ app, onUpdateApp, 
                         </div>
                     )}
                 </div>
+            )}
+
+            {activeSection === 'apis' && (
+                 <div className="max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {SERVICE_CONFIGS.map((service) => (
+                        <motion.div 
+                            key={service.id}
+                            layout
+                            className={`bg-zinc-900 border rounded-2xl overflow-hidden transition-all ${openServiceId === service.id ? 'border-blue-500/50 shadow-lg shadow-blue-500/10 md:col-span-2' : 'border-zinc-800 hover:border-zinc-700'}`}
+                        >
+                            <div 
+                                onClick={() => setOpenServiceId(openServiceId === service.id ? null : service.id)}
+                                className="p-4 flex items-center justify-between cursor-pointer"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-center">
+                                        {service.icon}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-bold text-white">{service.name}</h3>
+                                        <p className="text-xs text-zinc-500">{service.description}</p>
+                                    </div>
+                                </div>
+                                {savedServiceId === service.id && (
+                                    <span className="text-xs text-green-400 font-bold flex items-center gap-1"><CheckCircle size={12} /> Saved</span>
+                                )}
+                            </div>
+                            
+                            <AnimatePresence>
+                                {openServiceId === service.id && (
+                                    <motion.div 
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        className="px-4 pb-4 border-t border-zinc-800 bg-zinc-950/50"
+                                    >
+                                        <div className="pt-4 space-y-4">
+                                            {service.fields.map((field) => (
+                                                <div key={field.key} className="space-y-1">
+                                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">{field.label}</label>
+                                                    <input 
+                                                        type={field.type}
+                                                        value={apiKeys[field.key] || ''}
+                                                        onChange={(e) => setApiKeys({...apiKeys, [field.key]: e.target.value})}
+                                                        placeholder={`Enter your ${field.label}...`}
+                                                        className="w-full p-2.5 bg-zinc-900 border border-zinc-800 rounded-lg text-sm text-white outline-none focus:border-white/30 transition-all font-mono"
+                                                    />
+                                                </div>
+                                            ))}
+                                            
+                                            <div className="flex items-center justify-between pt-2">
+                                                <a 
+                                                    href={service.link} 
+                                                    target="_blank" 
+                                                    rel="noreferrer" 
+                                                    className="text-xs text-zinc-500 hover:text-white flex items-center gap-1 transition-colors"
+                                                >
+                                                    Get API Key <ExternalLink size={10} />
+                                                </a>
+                                                <button 
+                                                    onClick={() => handleSaveServiceKeys(service.id)}
+                                                    className="px-4 py-2 bg-white text-black rounded-lg text-xs font-bold hover:bg-zinc-200 transition-colors"
+                                                >
+                                                    Save Credentials
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </motion.div>
+                    ))}
+                 </div>
             )}
 
             {activeSection === 'edge' && (

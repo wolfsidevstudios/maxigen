@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { GeneratedApp } from '../types';
-import { deployToNetlify } from '../services/netlifyService';
-import { Rocket, CheckCircle, ExternalLink, Loader2, AlertTriangle, Key } from 'lucide-react';
+import { deployToNetlify, getAuthUrl, exchangeCodeForToken } from '../services/netlifyService';
+import { CheckCircle, ExternalLink, Loader2, AlertTriangle, LogOut, ArrowRight, Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const NetlifyIcon = () => (
@@ -20,11 +21,20 @@ export const DeployView: React.FC<DeployViewProps> = ({ app, onSuccess }) => {
   const [errorMsg, setErrorMsg] = useState('');
   const [logs, setLogs] = useState<string[]>([]);
   
+  // OAuth State
+  const [oauthStep, setOauthStep] = useState<'init' | 'code' | 'authorized'>('init');
+  const [authCode, setAuthCode] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+
   const isMounted = useRef(true);
+  
   useEffect(() => {
       isMounted.current = true;
       const savedToken = localStorage.getItem('netlify_token');
-      if (savedToken) setToken(savedToken);
+      if (savedToken) {
+          setToken(savedToken);
+          setOauthStep('authorized');
+      }
       return () => { isMounted.current = false; };
   }, []);
 
@@ -32,13 +42,41 @@ export const DeployView: React.FC<DeployViewProps> = ({ app, onSuccess }) => {
       if (isMounted.current) setLogs(prev => [...prev, `> ${msg}`]);
   };
 
+  const handleConnect = () => {
+      const url = getAuthUrl();
+      window.open(url, '_blank', 'width=600,height=700');
+      setOauthStep('code');
+  };
+
+  const handleVerifyCode = async () => {
+      if (!authCode) return;
+      setIsVerifying(true);
+      setErrorMsg('');
+      try {
+          const newToken = await exchangeCodeForToken(authCode);
+          localStorage.setItem('netlify_token', newToken);
+          setToken(newToken);
+          setOauthStep('authorized');
+      } catch (e: any) {
+          setErrorMsg(e.message || "Failed to verify code");
+      } finally {
+          setIsVerifying(false);
+      }
+  };
+
+  const handleDisconnect = () => {
+      localStorage.removeItem('netlify_token');
+      setToken('');
+      setOauthStep('init');
+      setAuthCode('');
+      setStatus('idle');
+  };
+
   const handleDeploy = async () => {
     if (!token) {
-        setErrorMsg("Please enter your Netlify Personal Access Token");
+        setErrorMsg("Authentication token missing.");
         return;
     }
-
-    localStorage.setItem('netlify_token', token);
 
     setStatus('deploying');
     setLogs([]);
@@ -84,6 +122,11 @@ export const DeployView: React.FC<DeployViewProps> = ({ app, onSuccess }) => {
                     </h2>
                     <p className="text-zinc-400 text-xs mt-1">Host your app instantly on Netlify's global CDN.</p>
                 </div>
+                {oauthStep === 'authorized' && (
+                    <button onClick={handleDisconnect} className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors">
+                        <LogOut size={12} /> Disconnect
+                    </button>
+                )}
             </div>
 
             {/* Content */}
@@ -120,51 +163,95 @@ export const DeployView: React.FC<DeployViewProps> = ({ app, onSuccess }) => {
                     </motion.div>
                 ) : (
                     <>
-                        {/* Token Input */}
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
-                                <Key size={12} /> Netlify Personal Access Token
-                            </label>
-                            <div className="relative">
-                                <input 
-                                    type="password" 
-                                    value={token}
-                                    onChange={(e) => setToken(e.target.value)}
-                                    placeholder="Paste token..." 
-                                    className="w-full pl-4 pr-10 py-3 bg-zinc-950 border border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-white/10 focus:border-zinc-600 transition-all font-mono text-sm text-white"
-                                />
-                                {token && <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500"><CheckCircle size={14} /></div>}
-                            </div>
-                            <p className="text-[10px] text-zinc-500">
-                                Found in User Settings {'>'} Applications {'>'} Personal Access Tokens.
-                            </p>
-                        </div>
-
-                        {/* Error Message */}
-                        {status === 'error' && (
-                            <div className="p-4 bg-red-900/20 text-red-400 rounded-xl border border-red-500/20 flex items-start gap-3 text-sm">
-                                <AlertTriangle size={18} className="shrink-0 mt-0.5" />
-                                <div>
-                                    <span className="font-bold">Deployment Failed:</span> {errorMsg}
+                        {/* Auth Flow */}
+                        {oauthStep === 'init' && (
+                            <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
+                                <div className="p-4 bg-zinc-950 rounded-full border border-zinc-800 shadow-xl mb-2">
+                                    <div className="w-12 h-12">
+                                        <NetlifyIcon />
+                                    </div>
                                 </div>
+                                <h3 className="text-white font-bold text-lg">Connect Netlify Account</h3>
+                                <p className="text-zinc-400 text-sm max-w-xs">Authorize MaxiGen to deploy sites to your Netlify account.</p>
+                                <button 
+                                    onClick={handleConnect}
+                                    className="px-6 py-3 bg-[#00ad9f] hover:bg-[#008f83] text-white rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-2"
+                                >
+                                    Connect Netlify <ArrowRight size={16} />
+                                </button>
                             </div>
                         )}
 
-                        {/* Deploy Button */}
-                        <button 
-                            onClick={handleDeploy}
-                            disabled={status === 'deploying' || !token}
-                            className="w-full py-3 bg-[#00ad9f] text-white rounded-xl font-bold text-sm hover:bg-[#008f83] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-[#00ad9f]/20"
-                        >
-                            {status === 'deploying' ? (
-                                <>
-                                    <Loader2 size={16} className="animate-spin" />
-                                    Deploying...
-                                </>
-                            ) : (
-                                "Deploy to Netlify"
-                            )}
-                        </button>
+                        {oauthStep === 'code' && (
+                            <div className="space-y-4 max-w-sm mx-auto">
+                                <div className="text-center mb-4">
+                                    <h3 className="text-white font-bold">Verification</h3>
+                                    <p className="text-zinc-400 text-xs mt-1">Paste the code shown in the Netlify popup window.</p>
+                                </div>
+                                
+                                <div className="relative">
+                                    <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                                    <input 
+                                        type="text" 
+                                        value={authCode}
+                                        onChange={(e) => setAuthCode(e.target.value)}
+                                        placeholder="Paste verification code..." 
+                                        className="w-full pl-10 pr-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-[#00ad9f]/50 focus:border-[#00ad9f] transition-all font-mono text-sm text-white"
+                                        autoFocus
+                                    />
+                                </div>
+
+                                <button 
+                                    onClick={handleVerifyCode}
+                                    disabled={!authCode || isVerifying}
+                                    className="w-full py-3 bg-white text-black rounded-xl font-bold text-sm hover:bg-zinc-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    {isVerifying ? <Loader2 size={16} className="animate-spin" /> : "Verify Code"}
+                                </button>
+                                
+                                <button onClick={() => setOauthStep('init')} className="w-full text-center text-xs text-zinc-500 hover:text-white mt-2">
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
+
+                        {oauthStep === 'authorized' && (
+                            <>
+                                <div className="flex items-center justify-between p-4 bg-zinc-950 border border-zinc-800 rounded-xl mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                        <span className="text-sm font-medium text-white">Connected to Netlify</span>
+                                    </div>
+                                    <span className="text-xs text-zinc-500 font-mono">Ready to deploy</span>
+                                </div>
+
+                                {/* Deploy Button */}
+                                <button 
+                                    onClick={handleDeploy}
+                                    disabled={status === 'deploying'}
+                                    className="w-full py-3 bg-[#00ad9f] text-white rounded-xl font-bold text-sm hover:bg-[#008f83] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-[#00ad9f]/20"
+                                >
+                                    {status === 'deploying' ? (
+                                        <>
+                                            <Loader2 size={16} className="animate-spin" />
+                                            Deploying...
+                                        </>
+                                    ) : (
+                                        "Deploy Now"
+                                    )}
+                                </button>
+                            </>
+                        )}
+
+                        {/* Error Message */}
+                        {errorMsg && (
+                            <div className="p-4 bg-red-900/20 text-red-400 rounded-xl border border-red-500/20 flex items-start gap-3 text-sm animate-fade-in">
+                                <AlertTriangle size={18} className="shrink-0 mt-0.5" />
+                                <div>
+                                    <span className="font-bold">Error:</span> {errorMsg}
+                                </div>
+                            </div>
+                        )}
                     </>
                 )}
 

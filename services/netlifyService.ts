@@ -1,5 +1,43 @@
+
 import JSZip from 'https://esm.sh/jszip';
 import { GeneratedApp } from '../types';
+
+const CLIENT_ID = '-eROvSTaLUWDqXPPA0JB1d9s9stSUjbsCUOD0UVtgB8';
+const CLIENT_SECRET = 'BCMjZU3XuL7T6arM7kk5jhGkSJevxnPpxUa9GNSgOD0';
+
+export const getAuthUrl = () => {
+    return `https://app.netlify.com/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=urn:ietf:wg:oauth:2.0:oob`;
+};
+
+export const exchangeCodeForToken = async (code: string) => {
+    const params = new URLSearchParams();
+    params.append('grant_type', 'authorization_code');
+    params.append('client_id', CLIENT_ID);
+    params.append('client_secret', CLIENT_SECRET);
+    params.append('code', code);
+    params.append('redirect_uri', 'urn:ietf:wg:oauth:2.0:oob');
+
+    try {
+        const response = await fetch('https://api.netlify.com/oauth/token', {
+            method: 'POST',
+            body: params,
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        });
+
+        if (!response.ok) {
+             const err = await response.json().catch(() => ({}));
+             throw new Error(err.error_description || 'Failed to exchange code');
+        }
+
+        const data = await response.json();
+        return data.access_token as string;
+    } catch (error) {
+        console.error("Netlify OAuth Error", error);
+        throw error;
+    }
+};
 
 export const getDeploymentStatus = async (token: string, deploymentId: string) => {
   // Not strictly needed for immediate Zip deploys as they are synchronous in this context,
@@ -91,7 +129,7 @@ export const deployToNetlify = async (token: string, app: GeneratedApp) => {
   });
 
   if (!response.ok) {
-    throw new Error('Netlify deployment failed. Check your Personal Access Token.');
+    throw new Error('Netlify deployment failed. Check your access token or network connection.');
   }
 
   const data = await response.json();
