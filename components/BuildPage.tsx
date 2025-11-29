@@ -1,14 +1,15 @@
 
+
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Rocket, Monitor, ArrowUp, Loader2, Play, Plus, Mic, Code2, LayoutDashboard, Database, ImageIcon, Hammer, CheckCircle2, FileText, Layers, Zap, MousePointer2, X } from 'lucide-react';
+import { Rocket, Monitor, ArrowUp, Loader2, Play, Plus, Mic, Code2, LayoutDashboard, Database, ImageIcon, Hammer, CheckCircle2, FileText, Layers, Zap, MousePointer2, X, Users } from 'lucide-react';
 import { generateAppCode, editAppCode, generateProjectPlan } from '../services/geminiService';
 import { DashboardView } from './DashboardView';
 import { IntegrationsModal } from './IntegrationsModal';
 import { AudioWave } from './AudioWave';
 import { speechToText } from '../services/speechService';
 import { Integration } from '../services/integrationsService';
-import { GeneratedApp, AppState, ChatMessage, ProjectFile, ProjectPlan } from '../types';
+import { GeneratedApp, AppState, ChatMessage, ProjectFile, ProjectPlan, Agent, GenerationMode } from '../types';
 import { AdOverlay } from './AdOverlay';
 import { WebPreview } from './WebPreview';
 import { CodeViewer } from './CodeViewer';
@@ -27,6 +28,12 @@ interface AgentLog {
   message: string;
   status: 'pending' | 'active' | 'completed';
 }
+
+const TEAM_AGENTS: Record<string, Agent> = {
+    pm: { name: "Atlas", role: "Product Manager", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Atlas", color: "text-blue-400 border-blue-500/30 bg-blue-500/10" },
+    designer: { name: "Luna", role: "Lead Designer", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Luna", color: "text-pink-400 border-pink-500/30 bg-pink-500/10" },
+    dev: { name: "Orion", role: "Systems Architect", avatar: "https://api.dicebear.com/7.x/notionists/svg?seed=Orion", color: "text-green-400 border-green-500/30 bg-green-500/10" }
+};
 
 const BuildHome: React.FC<{ onStart: (prompt: string) => void }> = ({ onStart }) => {
     const [input, setInput] = useState('');
@@ -142,9 +149,10 @@ interface BuildPageProps {
   onPromptHandled?: () => void;
   checkCredits: () => boolean;
   initialApp?: GeneratedApp | null;
+  initialMode?: GenerationMode;
 }
 
-export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialPrompt, onPromptHandled, checkCredits, initialApp }) => {
+export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialPrompt, onPromptHandled, checkCredits, initialApp, initialMode = 'default' }) => {
   const [input, setInput] = useState('');
   const [state, setState] = useState<AppState>(AppState.IDLE);
   const [app, setApp] = useState<GeneratedApp | null>(null);
@@ -160,6 +168,7 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const [originalPrompt, setOriginalPrompt] = useState('');
+  const [isTeamMode, setIsTeamMode] = useState(initialMode === 'team');
 
   // Element Selection State
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -212,29 +221,26 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
   };
 
   const handleQALog = (log: { message: string, status: 'active' | 'completed' | 'error' }) => {
-      // Avoid duplicate logs if possible, or just append
       if (log.status === 'completed' && log.message.includes('Testing Complete')) {
           setIsTesting(false);
           completeAgentLog();
           addAgentLog('qa', 'QA Automated Testing Passed.', 'completed');
       } else {
-          // Check if the last log is the same to prevent spam
           setAgentLogs(prev => {
               const last = prev[prev.length - 1];
               if (last && last.message === log.message) return prev;
               
               const updated = prev.map(l => l.status === 'active' ? { ...l, status: 'completed' as const } : l);
-              return [...updated, { id: Date.now().toString(), step: 'qa', message: log.message, status: log.status === 'error' ? 'active' : 'completed' }]; // Keep errors active?
+              return [...updated, { id: Date.now().toString(), step: 'qa', message: log.message, status: log.status === 'error' ? 'active' : 'completed' }]; 
           });
       }
   };
 
   const handleScreenshot = (image: string) => {
-      // Add screenshot message
       const msg: ChatMessage = {
           role: 'assistant',
           content: '📸 Captured snapshot of your app:',
-          attachment: image.split(',')[1], // WebPreview sends full data URI
+          attachment: image.split(',')[1],
           timestamp: Date.now()
       };
       setMessages(prev => [...prev, msg]);
@@ -277,10 +283,8 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
     if (!checkCredits()) return;
 
     let promptToSend = text;
-    // Prepend Element Context if selected
     if (selectedElement) {
         promptToSend = `[CONTEXT: User selected element <${selectedElement.tagName}> containing text "${selectedElement.text}". HTML context: ${selectedElement.htmlSnippet}] \n\n User Request: ${text}`;
-        // Clear selection after sending
         setSelectedElement(null); 
     }
 
@@ -297,7 +301,6 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
         const firebaseConfig = localStorage.getItem('firebase_config') || undefined;
         const revenueCatKey = localStorage.getItem('revenuecat_key') || undefined;
         
-        // Simulation of agent thinking
         setTimeout(() => addAgentLog('plan', 'Identifying files to modify...'), 1000);
         setTimeout(() => addAgentLog('code', 'Applying changes to codebase...'), 2500);
 
@@ -313,11 +316,9 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
             setMessages(prev => [...prev, aiMsg]);
             setState(AppState.SUCCESS);
             
-            // Trigger QA and Screenshot
             setTimeout(() => {
                 addAgentLog('qa', 'Initiating automated QA testing...', 'active');
                 setIsTesting(true);
-                // Trigger screenshot after delay
                 setTimeout(() => setCaptureTrigger(prev => prev + 1), 3000);
             }, 1000);
 
@@ -326,31 +327,77 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
             setState(AppState.ERROR);
         }
     } else {
-        // NEW APP: Start Planning Phase
-        setState(AppState.PLANNING);
+        // NEW APP GENERATION
         setOriginalPrompt(text);
-        try {
-            const plan = await generateProjectPlan(text);
-            const aiMsg: ChatMessage = { 
-                role: 'assistant', 
-                content: `I've created a plan for your app! Check it out below 👇`, 
-                plan: plan, 
-                timestamp: Date.now() 
+        
+        // TEAM MODE LOGIC
+        if (isTeamMode) {
+            setState(AppState.GENERATING);
+            setAgentLogs([]); // Still use agent terminal for progress
+            
+            // SIMULATED CONVERSATION
+            const startTeamChat = async () => {
+                // 1. PM
+                await new Promise(r => setTimeout(r, 1000));
+                setMessages(prev => [...prev, {
+                    role: 'assistant',
+                    content: "I'll define the core requirements and user flow for this application. We need to ensure the user experience is intuitive.",
+                    timestamp: Date.now(),
+                    agent: TEAM_AGENTS.pm
+                }]);
+
+                // 2. Designer
+                await new Promise(r => setTimeout(r, 1500));
+                setMessages(prev => [...prev, {
+                    role: 'assistant',
+                    content: "I'm planning a sleek, glassmorphic interface with a dark theme. I'll focus on smooth transitions and high-contrast typography.",
+                    timestamp: Date.now(),
+                    agent: TEAM_AGENTS.designer
+                }]);
+
+                // 3. Architect
+                await new Promise(r => setTimeout(r, 1500));
+                setMessages(prev => [...prev, {
+                    role: 'assistant',
+                    content: "I'll architect the component structure using semantic HTML5 and clean Tailwind classes. I'll also ensure the state management is robust.",
+                    timestamp: Date.now(),
+                    agent: TEAM_AGENTS.dev
+                }]);
+
+                await new Promise(r => setTimeout(r, 1000));
+                // Proceed to build
+                handleApprovePlan(text, true); // true = skip state reset
             };
-            setMessages(prev => [...prev, aiMsg]);
-        } catch (error) {
-            setMessages(prev => [...prev, { role: 'assistant', content: "I had trouble creating a plan. Let's try building directly.", timestamp: Date.now() }]);
-            // Fallback to direct build if plan fails
-            handleApprovePlan(text);
+            
+            startTeamChat();
+
+        } else {
+            // STANDARD MODE: Start Planning Phase
+            setState(AppState.PLANNING);
+            try {
+                const plan = await generateProjectPlan(text);
+                const aiMsg: ChatMessage = { 
+                    role: 'assistant', 
+                    content: `I've created a plan for your app! Check it out below 👇`, 
+                    plan: plan, 
+                    timestamp: Date.now() 
+                };
+                setMessages(prev => [...prev, aiMsg]);
+            } catch (error) {
+                setMessages(prev => [...prev, { role: 'assistant', content: "I had trouble creating a plan. Let's try building directly.", timestamp: Date.now() }]);
+                handleApprovePlan(text);
+            }
         }
     }
   };
 
-  const handleApprovePlan = async (promptToUse?: string) => {
+  const handleApprovePlan = async (promptToUse?: string, skipStateReset = false) => {
       const prompt = promptToUse || originalPrompt;
-      setState(AppState.GENERATING);
-      setConsoleLogs([]); 
-      setAgentLogs([]);
+      if (!skipStateReset) {
+          setState(AppState.GENERATING);
+          setConsoleLogs([]); 
+          setAgentLogs([]);
+      }
 
       // Initial Agent Logs
       addAgentLog('init', 'Power Agent initialized.');
@@ -363,7 +410,6 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
       const revenueCatKey = localStorage.getItem('revenuecat_key') || undefined;
 
       try {
-          // Use 'agentic' mode for powerful generation
           const { screens, explanation, edgeFunctions } = await generateAppCode(prompt, 'web', undefined, 'agentic', undefined, 'gemini-2.5-flash', firebaseConfig, revenueCatKey);
           
           completeAgentLog();
@@ -372,7 +418,15 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
 
           const newApp = { ...screens[0], edgeFunctions };
           setApp(newApp);
-          const aiMsg: ChatMessage = { role: 'assistant', content: explanation, appData: newApp, timestamp: Date.now() };
+          
+          const aiMsg: ChatMessage = { 
+              role: 'assistant', 
+              content: explanation, 
+              appData: newApp, 
+              timestamp: Date.now(),
+              // If team mode, attribute final build to Architect
+              agent: isTeamMode ? TEAM_AGENTS.dev : undefined 
+          };
           setMessages(prev => [...prev, aiMsg]);
           
           if (onProjectCreated) {
@@ -380,11 +434,9 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
           }
           setState(AppState.SUCCESS);
 
-          // Trigger QA and Screenshot
           setTimeout(() => {
               addAgentLog('qa', 'Initiating automated QA testing...', 'active');
               setIsTesting(true);
-              // Trigger screenshot after delay
               setTimeout(() => setCaptureTrigger(prev => prev + 1), 3000);
           }, 1000);
 
@@ -394,7 +446,6 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
       }
   };
 
-  // SHOW LANDING PAGE IF NO APP AND NO MESSAGES
   if (!app && messages.length === 0 && state === AppState.IDLE) {
       return (
           <>
@@ -409,12 +460,32 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
       <div className="w-full md:w-[450px] flex flex-col border-r border-zinc-800 h-[40vh] md:h-screen bg-zinc-950 shadow-xl z-20">
         <div className="h-16 flex items-center px-6 border-b border-zinc-800 bg-zinc-950 sticky top-0 z-20 justify-between">
             <div className="flex items-center gap-2"><div className="p-1.5 bg-white text-black rounded-lg"><Rocket size={16} /></div><h1 className="font-bold text-sm tracking-tight text-white">HTML Builder</h1></div>
-            <div className="bg-amber-900/30 text-amber-400 px-2 py-0.5 rounded text-[10px] font-bold border border-amber-500/30 uppercase tracking-wide">Beta</div>
+            <div className="flex items-center gap-2">
+                {isTeamMode && (
+                    <div className="bg-orange-900/30 text-orange-400 px-2 py-0.5 rounded text-[10px] font-bold border border-orange-500/30 uppercase tracking-wide flex items-center gap-1">
+                        <Users size={10} /> Team Mode
+                    </div>
+                )}
+                <div className="bg-amber-900/30 text-amber-400 px-2 py-0.5 rounded text-[10px] font-bold border border-amber-500/30 uppercase tracking-wide">Beta</div>
+            </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 custom-scrollbar pb-32 bg-zinc-950">
             {messages.map((msg, i) => (
                 <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                    {/* AGENT HEADER */}
+                    {msg.agent && (
+                        <div className="flex items-center gap-2 mb-2 ml-1">
+                            <div className="w-6 h-6 rounded-full overflow-hidden border border-white/20">
+                                <img src={msg.agent.avatar} alt={msg.agent.name} className="w-full h-full object-cover" />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-white leading-none">{msg.agent.name}</span>
+                                <span className="text-[8px] font-medium text-zinc-500 uppercase tracking-wider leading-none mt-0.5">{msg.agent.role}</span>
+                            </div>
+                        </div>
+                    )}
+
                     {msg.attachment && (
                         <div className="mb-2 rounded-lg overflow-hidden border border-zinc-700 shadow-sm max-w-[200px]">
                             <img src={`data:image/png;base64,${msg.attachment}`} alt="Snapshot" className="w-full h-auto" />
@@ -470,7 +541,10 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
                              </div>
                         </div>
                     ) : (
-                        <div className={`max-w-[95%] px-5 py-4 text-[13px] leading-relaxed shadow-sm rounded-2xl whitespace-pre-wrap ${msg.role === 'user' ? 'bg-white text-black rounded-br-sm' : 'bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-bl-sm'}`}>
+                        <div className={`max-w-[95%] px-5 py-4 text-[13px] leading-relaxed shadow-sm rounded-2xl whitespace-pre-wrap 
+                            ${msg.agent ? `${msg.agent.color} border` : ''} 
+                            ${msg.role === 'user' ? 'bg-white text-black rounded-br-sm' : !msg.agent ? 'bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-bl-sm' : 'rounded-tl-none'}
+                        `}>
                             {msg.content}
                         </div>
                     )}
@@ -512,7 +586,7 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
                     <textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder={selectedElement ? "Describe changes for this element..." : "Type a message..."}
+                        placeholder={selectedElement ? "Describe changes for this element..." : (isTeamMode ? "Brief the team..." : "Type a message...")}
                         className="w-full bg-transparent text-sm p-4 min-h-[50px] max-h-[120px] resize-none outline-none text-white placeholder:text-zinc-600 font-medium custom-scrollbar"
                         disabled={state === AppState.GENERATING || state === AppState.PLANNING}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(input); } }}
@@ -531,7 +605,6 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
                                 </AnimatePresence>
                              </div>
                              
-                             {/* Element Select Toggle */}
                              <button 
                                 type="button"
                                 onClick={() => {
@@ -546,6 +619,15 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
                                 title="Select Element to Edit"
                              >
                                 <MousePointer2 size={18} />
+                             </button>
+
+                             <button 
+                                type="button"
+                                onClick={() => setIsTeamMode(!isTeamMode)}
+                                className={`p-2 rounded-full transition-colors ${isTeamMode ? 'bg-orange-500 text-white' : 'hover:bg-zinc-800 text-zinc-400 hover:text-white'}`} 
+                                title="Toggle Team Development"
+                             >
+                                <Users size={18} />
                              </button>
 
                              <button 

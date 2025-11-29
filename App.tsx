@@ -1,6 +1,7 @@
 
+
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Zap, ArrowRight, Layout, MousePointer2, ZoomIn, ZoomOut, RotateCcw, Trash2, X, Pencil, Plus, Mic, AudioLines, ArrowUp, Smartphone, Monitor, Layers, PenTool, MousePointer, Square, Image as ImageIcon, Undo2, Redo2, MoreHorizontal, Sparkles, Copy, Bot, Link as LinkIcon, Palette, Globe, Database, Cpu, Settings, Play, Rocket } from 'lucide-react';
+import { Send, Loader2, Zap, ArrowRight, Layout, MousePointer2, ZoomIn, ZoomOut, RotateCcw, Trash2, X, Pencil, Plus, Mic, AudioLines, ArrowUp, Smartphone, Monitor, Layers, PenTool, MousePointer, Square, Image as ImageIcon, Undo2, Redo2, MoreHorizontal, Sparkles, Copy, Bot, Link as LinkIcon, Palette, Globe, Database, Cpu, Settings, Play, Rocket, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateAppCode, editAppCode } from './services/geminiService';
 import { speechToText } from './services/speechService';
@@ -102,6 +103,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSearch, platform, setPlatfo
       if (generationMode === 'redesign') return "Describe what you want to improve (e.g. 'Make it cleaner')...";
       if (generationMode === 'copy') return "Describe the content of your new app...";
       if (generationMode === 'agentic') return "Research and design a...";
+      if (generationMode === 'team') return "Brief the team on your project...";
       return "A modern e-commerce dashboard...";
   };
 
@@ -109,6 +111,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSearch, platform, setPlatfo
       if (generationMode === 'redesign') return 'bg-purple-950/30 border-purple-500/30 ring-purple-500/20';
       if (generationMode === 'copy') return 'bg-blue-950/30 border-blue-500/30 ring-blue-500/20';
       if (generationMode === 'agentic') return 'bg-teal-950/30 border-teal-500/30 ring-teal-500/20';
+      if (generationMode === 'team') return 'bg-orange-950/30 border-orange-500/30 ring-orange-500/20';
       return ''; // Default handled by shimmer wrapper
   };
 
@@ -139,12 +142,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSearch, platform, setPlatfo
                       <div className="flex items-center justify-between px-6 pt-3 pb-1">
                           <div className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider ${
                               generationMode === 'redesign' ? 'text-purple-400' : 
-                              generationMode === 'copy' ? 'text-blue-400' : 'text-teal-400'
+                              generationMode === 'copy' ? 'text-blue-400' : 
+                              generationMode === 'team' ? 'text-orange-400' :
+                              'text-teal-400'
                           }`}>
                               {generationMode === 'redesign' && <Sparkles size={14} />}
                               {generationMode === 'copy' && <Copy size={14} />}
                               {generationMode === 'agentic' && <Bot size={14} />}
-                              {generationMode === 'redesign' ? "Redesign Mode" : generationMode === 'copy' ? "Copy & Design Mode" : "Agentic Mode"}
+                              {generationMode === 'team' && <Users size={14} />}
+                              {generationMode === 'redesign' ? "Redesign Mode" : generationMode === 'copy' ? "Copy & Design Mode" : generationMode === 'team' ? "Team Development" : "Agentic Mode"}
                           </div>
                           <button 
                             type="button" 
@@ -298,7 +304,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSearch, platform, setPlatfo
                                         initial={{ opacity: 0, scale: 0.95, y: 10 }}
                                         animate={{ opacity: 1, scale: 1, y: 0 }}
                                         exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                                        className="absolute bottom-full right-0 mb-2 w-48 bg-[#18181b] rounded-xl shadow-xl border border-zinc-800 overflow-hidden z-50 py-1"
+                                        className="absolute bottom-full right-0 mb-2 w-56 bg-[#18181b] rounded-xl shadow-xl border border-zinc-800 overflow-hidden z-50 py-1"
                                     >
                                         <div className="px-3 py-2 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Beta Tools</div>
                                         <button 
@@ -324,6 +330,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSearch, platform, setPlatfo
                                         >
                                             <Bot size={14} />
                                             Agentic Mode
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => { setShowMenu(false); setGenerationMode('team'); }}
+                                            className={`w-full text-left px-4 py-2.5 flex items-center gap-2 text-sm ${generationMode === 'team' ? 'bg-orange-900/20 text-orange-400' : 'hover:bg-zinc-800 text-zinc-300'}`}
+                                        >
+                                            <Users size={14} />
+                                            Team Development
                                         </button>
                                     </motion.div>
                                 )}
@@ -397,6 +411,7 @@ export default function App() {
   const [canvasApps, setCanvasApps] = useState<CanvasApp[]>([]);
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [pendingBuildPrompt, setPendingBuildPrompt] = useState<string | null>(null);
+  const [pendingBuildMode, setPendingBuildMode] = useState<GenerationMode>('default');
   
   // Platform & Mode State
   const [platform, setPlatform] = useState<Platform>('mobile');
@@ -523,7 +538,7 @@ export default function App() {
               const ai = new GoogleGenAI({ apiKey: localStorage.getItem('gemini_api_key') || process.env.API_KEY });
               const response = await ai.models.generateContent({
                   model: 'gemini-2.5-flash',
-                  contents: transcript,
+                  contents: { parts: [{ text: transcript }] },
                   config: { systemInstruction: "You are a helpful AI assistant for an app builder. Keep responses concise and conversational." }
               });
               const reply = response.text || "I'm not sure how to help with that.";
@@ -665,24 +680,23 @@ export default function App() {
       setShowAnnotationModal(false);
   };
 
-  const handleMicClick = () => {
-      if (isListening) {
-          recognitionRef.current?.stop();
-          setIsListening(false);
-      } else {
-          setIsListening(true);
-          recognitionRef.current = speechToText.start(
-              (transcript) => setInput(prev => prev + (prev ? ' ' : '') + transcript),
-              () => setIsListening(false)
-          );
-      }
-  };
-
   const handleBoostUI = () => {
       setInput(prev => prev + (prev ? ' ' : '') + " [BOOST UI: Ultra-modern, 28px radius cards, padded images]");
   };
 
   const processInput = async (text: string, image?: string, mode?: GenerationMode, url?: string) => {
+    // If it's a build request, route to build page
+    // Unless it's just a small chat in "Home"
+    // For now, if we are in Home, we do the Canvas approach.
+    // If Mode is 'team', we force route to Build Page to handle the team chat simulation
+    
+    if (mode === 'team') {
+        setActivePage('build');
+        setPendingBuildPrompt(text);
+        setPendingBuildMode('team');
+        return;
+    }
+
     if ((!text.trim() && !image) || state === AppState.GENERATING) return;
 
     if (!checkAndConsumeCredit()) return;
@@ -788,40 +802,46 @@ export default function App() {
     }
   };
 
-  const handleSubmit = (e?: React.FormEvent | React.MouseEvent) => {
+  const handleSubmit = (e?: React.FormEvent | React.KeyboardEvent) => {
       if (e) e.preventDefault();
-      if (!input.trim() && !pendingAttachment) return;
-      processInput(input, pendingAttachment || undefined);
+      if (input.trim() || pendingAttachment) {
+          processInput(input, pendingAttachment || undefined);
+      }
+  };
+
+  const handleMicClick = () => {
+      if (isListening) {
+          recognitionRef.current?.stop();
+          setIsListening(false);
+      } else {
+          setIsListening(true);
+          recognitionRef.current = speechToText.start(
+              (transcript) => setInput(prev => prev + (prev ? ' ' : '') + transcript),
+              () => setIsListening(false)
+          );
+      }
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    if (e.target === e.currentTarget && viewMode === 'design') {
-        isDragging.current = true;
-        lastPointerPosition.current = { x: e.clientX, y: e.clientY };
-        e.currentTarget.setPointerCapture(e.pointerId);
-        setSelectedAppId(null); 
-    }
+    if (viewMode !== 'design') return;
+    isDragging.current = true;
+    lastPointerPosition.current = { x: e.clientX, y: e.clientY };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (isDragging.current && viewMode === 'design') {
-        const deltaX = e.clientX - lastPointerPosition.current.x;
-        const deltaY = e.clientY - lastPointerPosition.current.y;
-        
-        setPan(prev => ({
-            x: prev.x + deltaX,
-            y: prev.y + deltaY
-        }));
-        
-        lastPointerPosition.current = { x: e.clientX, y: e.clientY };
-    }
+    if (!isDragging.current || viewMode !== 'design') return;
+    const dx = e.clientX - lastPointerPosition.current.x;
+    const dy = e.clientY - lastPointerPosition.current.y;
+    setPan(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+    lastPointerPosition.current = { x: e.clientX, y: e.clientY };
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
-    if (isDragging.current) {
-        isDragging.current = false;
-        e.currentTarget.releasePointerCapture(e.pointerId);
-    }
+    isDragging.current = false;
+    try {
+        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch(e) {}
   };
 
   // --- ROUTING LOGIC ---
@@ -951,10 +971,10 @@ export default function App() {
             <BuildPage 
                 onProjectCreated={handleBuildProjectCreated} 
                 initialPrompt={pendingBuildPrompt}
-                onPromptHandled={() => setPendingBuildPrompt(null)}
+                onPromptHandled={() => { setPendingBuildPrompt(null); setPendingBuildMode('default'); }}
                 checkCredits={checkAndConsumeCredit}
-                // Pass loaded app if opened from widget
                 initialApp={loadedApp}
+                initialMode={pendingBuildMode}
             />
         )}
 

@@ -2,7 +2,7 @@
 
 export type Platform = 'mobile' | 'web';
 
-export type GenerationMode = 'default' | 'redesign' | 'copy' | 'agentic';
+export type GenerationMode = 'default' | 'redesign' | 'copy' | 'agentic' | 'team';
 
 export type ViewMode = 'design' | 'prototype' | 'deploy';
 
@@ -40,6 +40,13 @@ export interface GeneratedApp {
   edgeFunctions?: EdgeFunction[];
 }
 
+export interface Agent {
+  name: string;
+  role: string;
+  avatar: string;
+  color: string;
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -48,7 +55,8 @@ export interface ChatMessage {
   attachment?: string; // Base64 image
   timestamp: number;
   sources?: { title: string; uri: string }[];
-  suggestedIntegrations?: string[]; 
+  suggestedIntegrations?: string[];
+  agent?: Agent; // Agent persona if applicable
 }
 
 export enum AppState {
