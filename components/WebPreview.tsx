@@ -163,15 +163,20 @@ export const WebPreview: React.FC<WebPreviewProps> = ({ files, code, onConsole, 
 
             // --- QA AUTOMATION ---
             function startQARoutine() {
+                // Remove existing cursor if any
+                const existingCursor = document.getElementById('qa-cursor');
+                if (existingCursor) existingCursor.remove();
+
                 const cursor = document.createElement('div');
+                cursor.id = 'qa-cursor';
                 cursor.style.position = 'fixed';
                 cursor.style.width = '24px';
                 cursor.style.height = '24px';
-                cursor.style.background = 'rgba(239, 68, 68, 0.8)'; // Red-500
+                cursor.style.background = 'rgba(239, 68, 68, 0.9)'; // Red-500
                 cursor.style.borderRadius = '50%';
                 cursor.style.zIndex = '999999';
                 cursor.style.pointerEvents = 'none';
-                cursor.style.transition = 'all 0.6s cubic-bezier(0.22, 1, 0.36, 1)';
+                cursor.style.transition = 'all 0.8s cubic-bezier(0.22, 1, 0.36, 1)'; // Smooth slow movement
                 cursor.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
                 cursor.style.display = 'flex';
                 cursor.style.alignItems = 'center';
@@ -180,72 +185,140 @@ export const WebPreview: React.FC<WebPreviewProps> = ({ files, code, onConsole, 
                 cursor.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="none"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>';
                 document.body.appendChild(cursor);
 
-                // Find interactables
-                const interactables = Array.from(document.querySelectorAll('button, a, input, select, textarea, [role="button"]'))
-                    .filter(el => {
-                        const rect = el.getBoundingClientRect();
-                        return rect.width > 0 && rect.height > 0; // Visible only
-                    });
+                const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-                if (interactables.length === 0) {
-                    window.parent.postMessage({ type: 'QA_LOG', log: { message: "No interactive elements found.", status: 'completed' } }, '*');
-                    return;
-                }
+                const typeText = async (element, text) => {
+                    element.focus();
+                    element.value = '';
+                    for (let char of text) {
+                        element.value += char;
+                        element.dispatchEvent(new Event('input', { bubbles: true }));
+                        await sleep(150); // Slow typing speed for visual effect
+                    }
+                    element.dispatchEvent(new Event('change', { bubbles: true }));
+                };
 
-                let index = 0;
+                const smoothScrollTo = async (y) => {
+                    window.scrollTo({ top: y, behavior: 'smooth' });
+                    await sleep(1500); // Wait for scroll to complete and settle
+                };
 
-                const runStep = async () => {
-                    if (index >= interactables.length) {
-                        window.parent.postMessage({ type: 'QA_LOG', log: { message: "QA Testing Complete. All checks passed.", status: 'completed' } }, '*');
-                        setTimeout(() => cursor.remove(), 500);
+                const runSuite = async () => {
+                    // Phase 1: Scroll Test (Down then Up)
+                    window.parent.postMessage({ type: 'QA_LOG', log: { message: 'Analyzing page structure & scrolling...', status: 'active' } }, '*');
+                    
+                    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+                    if (maxScroll > 100) {
+                        // Scroll Down
+                        await smoothScrollTo(maxScroll);
+                        await sleep(1000);
+                        // Scroll Back Up
+                        await smoothScrollTo(0);
+                        await sleep(1000);
+                    }
+
+                    // Phase 2: Interaction Loop
+                    const interactables = Array.from(document.querySelectorAll('button, a, input, select, textarea, [role="button"]'))
+                        .filter(el => {
+                            const rect = el.getBoundingClientRect();
+                            // Must be visible and have size
+                            return rect.width > 0 && rect.height > 0 && window.getComputedStyle(el).visibility !== 'hidden';
+                        });
+
+                    if (interactables.length === 0) {
+                        window.parent.postMessage({ type: 'QA_LOG', log: { message: "No interactive elements found.", status: 'completed' } }, '*');
+                        cursor.remove();
                         return;
                     }
 
-                    const el = interactables[index];
-                    
-                    try {
-                        const rect = el.getBoundingClientRect();
-                        
-                        // Scroll into view
-                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        
-                        // Wait for scroll
-                        await new Promise(r => setTimeout(r, 600));
-                        
-                        // Update rect after scroll
-                        const newRect = el.getBoundingClientRect();
-                        
-                        // Move cursor
-                        cursor.style.top = (newRect.top + newRect.height/2 - 12) + 'px';
-                        cursor.style.left = (newRect.left + newRect.width/2 - 12) + 'px';
+                    for (let i = 0; i < interactables.length; i++) {
+                        const el = interactables[i];
+                        const tagName = el.tagName.toLowerCase();
+                        const isInput = tagName === 'input' || tagName === 'textarea';
+                        const isButton = tagName === 'button' || tagName === 'a' || el.getAttribute('role') === 'button' || (tagName === 'input' && (el.type === 'submit' || el.type === 'button'));
 
-                        // Report finding
-                        let name = el.innerText || el.placeholder || el.getAttribute('aria-label') || el.tagName;
-                        name = name.substring(0, 20).replace(/\\n/g, '');
-                        if(!name) name = "Element";
-                        
-                        // Fixed: Use string concatenation to avoid template literal issues in parent file
-                        window.parent.postMessage({ type: 'QA_LOG', log: { message: 'Testing interaction: ' + name + '...', status: 'active' } }, '*');
+                        let elName = el.innerText || el.placeholder || el.name || tagName;
+                        elName = elName.substring(0, 20).replace(/\\n/g, '').trim();
+                        if (!elName) elName = "Element";
 
-                        // Wait for move
-                        await new Promise(r => setTimeout(r, 800));
+                        try {
+                            // 1. Scroll Element into View
+                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            await sleep(1000); // Allow scroll to finish
 
-                        // Click Effect
-                        cursor.style.transform = 'scale(0.8)';
-                        setTimeout(() => cursor.style.transform = 'scale(1)', 150);
-                        
-                        // Simulate Click
-                        el.click();
-                        
-                    } catch (e) {
-                        window.parent.postMessage({ type: 'QA_LOG', log: { message: 'Failed to interact with element ' + index + '.', status: 'error' } }, '*');
+                            // 2. Move Cursor to Element
+                            const rect = el.getBoundingClientRect();
+                            cursor.style.top = (rect.top + rect.height/2 - 12) + 'px';
+                            cursor.style.left = (rect.left + rect.width/2 - 12) + 'px';
+                            
+                            // Visual Highlight
+                            el.style.outline = '2px solid rgba(239, 68, 68, 0.5)';
+                            await sleep(1000); // Pause on element
+
+                            // 3. Perform Action
+                            if (isInput && !isButton) {
+                                // Input Handling
+                                window.parent.postMessage({ type: 'QA_LOG', log: { message: 'Typing into ' + elName + '...', status: 'active' } }, '*');
+                                await typeText(el, "Hello World");
+                                await sleep(500);
+
+                                // Check if the next element is likely the send/submit button
+                                const nextEl = interactables[i+1];
+                                if (nextEl) {
+                                    const nextTag = nextEl.tagName.toLowerCase();
+                                    const nextIsButton = nextTag === 'button' || nextTag === 'a' || (nextTag === 'input' && nextEl.type === 'submit');
+                                    
+                                    if (nextIsButton) {
+                                        // Smart Agent: "I typed, now I click send"
+                                        i++; // Skip next iteration as we handle it now
+                                        
+                                        // Target the button
+                                        nextEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        await sleep(800);
+                                        
+                                        const nextRect = nextEl.getBoundingClientRect();
+                                        cursor.style.top = (nextRect.top + nextRect.height/2 - 12) + 'px';
+                                        cursor.style.left = (nextRect.left + nextRect.width/2 - 12) + 'px';
+                                        
+                                        window.parent.postMessage({ type: 'QA_LOG', log: { message: 'Clicking submit button...', status: 'active' } }, '*');
+                                        await sleep(1000);
+                                        
+                                        // Click Animation
+                                        cursor.style.transform = 'scale(0.8)';
+                                        await sleep(150);
+                                        cursor.style.transform = 'scale(1)';
+                                        
+                                        nextEl.click();
+                                        nextEl.style.outline = '2px solid rgba(239, 68, 68, 0.5)';
+                                        await sleep(1500); // Wait for action
+                                        nextEl.style.outline = '';
+                                    }
+                                }
+                            } else {
+                                // Standard Click
+                                window.parent.postMessage({ type: 'QA_LOG', log: { message: 'Clicking ' + elName + '...', status: 'active' } }, '*');
+                                cursor.style.transform = 'scale(0.8)';
+                                await sleep(150);
+                                cursor.style.transform = 'scale(1)';
+                                
+                                el.click();
+                                await sleep(1500); // Wait for action
+                            }
+
+                            // Remove Highlight
+                            el.style.outline = '';
+
+                        } catch (err) {
+                            // If element is detached or hidden during process, ignore
+                        }
                     }
 
-                    index++;
-                    setTimeout(runStep, 1000);
+                    window.parent.postMessage({ type: 'QA_LOG', log: { message: "Testing Complete. App is fully functional.", status: 'completed' } }, '*');
+                    await sleep(1000);
+                    cursor.remove();
                 };
 
-                runStep();
+                runSuite();
             }
         })();
       </script>
