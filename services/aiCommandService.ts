@@ -43,17 +43,31 @@ export const processVoiceCommand = async (
     const text = transcript.toLowerCase();
 
     // --- 1. TIMER COMMAND ---
-    // Matches: "set a timer for 5 minutes", "start timer 10 seconds"
-    const timerMatch = text.match(/timer.*for\s+(\d+)\s*(minute|second|hour)/) || text.match(/(\d+)\s*(minute|second|hour)\s*timer/);
+    // Expanded Regex to catch: "start a 2 min timer", "set timer for 5 minutes", "timer 10s"
+    
+    // Pattern A: "timer for 10 minutes"
+    const unitPattern = "(m|min|mins|minute|minutes|s|sec|secs|second|seconds|h|hr|hrs|hour|hours)";
+    const timerRegex1 = new RegExp(`(?:set|start)?\\s*(?:a)?\\s*timer.*(?:for)?\\s+(\\d+)\\s*${unitPattern}`);
+    
+    // Pattern B: "10 minute timer"
+    const timerRegex2 = new RegExp(`(\\d+)\\s*${unitPattern}.*timer`);
+
+    const timerMatch = text.match(timerRegex1) || text.match(timerRegex2);
     
     if (timerMatch) {
         const amount = parseInt(timerMatch[1]);
-        const unit = timerMatch[2];
+        let unit = timerMatch[2];
+        
+        // Normalize unit
+        if (unit.startsWith('m')) unit = 'minute';
+        else if (unit.startsWith('s')) unit = 'second';
+        else if (unit.startsWith('h')) unit = 'hour';
+
         let duration = 0;
         
-        if (unit.startsWith('minute')) duration = amount * 60;
-        if (unit.startsWith('second')) duration = amount;
-        if (unit.startsWith('hour')) duration = amount * 3600;
+        if (unit === 'minute') duration = amount * 60;
+        if (unit === 'second') duration = amount;
+        if (unit === 'hour') duration = amount * 3600;
 
         addWidget({
             id: Date.now().toString(),
@@ -65,9 +79,9 @@ export const processVoiceCommand = async (
 
     // --- 2. WEATHER COMMAND ---
     // Matches: "weather in London", "what's the weather like in Paris"
-    const weatherMatch = text.match(/weather.*in\s+(.+)/);
+    const weatherMatch = text.match(/(?:weather|temperature).*in\s+(.+)/);
     if (weatherMatch) {
-        const city = weatherMatch[1].replace('?', '').trim();
+        const city = weatherMatch[1].replace('?', '').replace('like', '').trim();
         const data = await getWeather(city);
         
         if (data) {
@@ -84,9 +98,9 @@ export const processVoiceCommand = async (
 
     // --- 3. BUILD APP COMMAND ---
     // Matches: "build an app about...", "generate an app for..."
-    if (text.includes('build an app') || text.includes('generate an app') || text.includes('create an app')) {
+    if (text.includes('build an app') || text.includes('generate an app') || text.includes('create an app') || text.includes('make an app')) {
         // Extract the prompt (simple split for now)
-        const prompt = text.replace(/.*(app|application)\s+(about|for|that|where)\s+/, '') || "A new cool app";
+        const prompt = text.replace(/.*(?:app|application)\s+(?:about|for|that|where)\s+/, '') || "A new cool app";
         
         // Notify parent to start build
         triggerBuild(prompt);
