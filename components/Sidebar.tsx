@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, Layers, Clock, Settings, Zap, Plus, Hammer, LayoutTemplate } from 'lucide-react';
+import { Home, Layers, Clock, Settings, Zap, Plus, Hammer, LayoutTemplate, Mic } from 'lucide-react';
 import { Page, Project } from '../types';
 
 interface SidebarProps {
@@ -9,21 +9,17 @@ interface SidebarProps {
   recentProjects: Project[];
   onNewProject: () => void;
   credits: number;
+  onOpenAssistant?: () => void;
 }
 
 // Deterministic Abstract Icon Generator based on string hash
 const GeneratedIcon: React.FC<{ name: string }> = ({ name }) => {
-    // Simple hash function
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
-    
-    // Generate colors from hash
     const c1 = `hsl(${Math.abs(hash) % 360}, 70%, 60%)`;
     const c2 = `hsl(${Math.abs(hash >> 8) % 360}, 70%, 60%)`;
-    
-    // Choose a shape type
     const type = Math.abs(hash) % 3;
 
     return (
@@ -35,7 +31,7 @@ const GeneratedIcon: React.FC<{ name: string }> = ({ name }) => {
     );
 };
 
-export const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, recentProjects, onNewProject, credits }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, recentProjects, onNewProject, credits, onOpenAssistant }) => {
   return (
     <div className="w-[60px] md:w-[72px] h-screen bg-black border-r border-zinc-800 flex flex-col items-center py-6 z-50 flex-shrink-0">
       {/* Logo */}
@@ -83,6 +79,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, recent
             <Layers size={24} strokeWidth={activePage === 'projects' ? 2.5 : 2} />
         </button>
       </div>
+
+      {/* AI Assistant Trigger */}
+      {onOpenAssistant && (
+          <div className="mt-4">
+              <button 
+                onClick={onOpenAssistant}
+                className="p-3 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-full border border-purple-500/30 text-purple-300 hover:scale-110 transition-transform shadow-lg shadow-purple-500/10 animate-pulse-slow"
+                title="AI Assistant"
+              >
+                  <Mic size={20} />
+              </button>
+          </div>
+      )}
 
       {/* Recent Projects Separator */}
       <div className="w-8 h-px bg-zinc-800 my-6"></div>

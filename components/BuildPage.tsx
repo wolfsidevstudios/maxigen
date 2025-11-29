@@ -21,6 +21,7 @@ interface Log {
 }
 
 const BuildHome: React.FC<{ onStart: (prompt: string) => void }> = ({ onStart }) => {
+    // ... (Keep BuildHome implementation as is) ...
     const [input, setInput] = useState('');
     const [isListening, setIsListening] = useState(false);
     const recognitionRef = useRef<any>(null);
@@ -133,9 +134,10 @@ interface BuildPageProps {
   initialPrompt?: string | null;
   onPromptHandled?: () => void;
   checkCredits: () => boolean;
+  initialApp?: GeneratedApp | null; // Added prop
 }
 
-export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialPrompt, onPromptHandled, checkCredits }) => {
+export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialPrompt, onPromptHandled, checkCredits, initialApp }) => {
   const [input, setInput] = useState('');
   const [state, setState] = useState<AppState>(AppState.IDLE);
   const [app, setApp] = useState<GeneratedApp | null>(null);
@@ -150,20 +152,35 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
   const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Stored Prompt for Planning Phase
   const [originalPrompt, setOriginalPrompt] = useState('');
+
+  // Handle Initial App passed from Assistant
+  useEffect(() => {
+      if (initialApp) {
+          setApp(initialApp);
+          const aiMsg: ChatMessage = { 
+              role: 'assistant', 
+              content: `Here is the app generated from your voice command.`, 
+              appData: initialApp, 
+              timestamp: Date.now() 
+          };
+          setMessages(prev => [...prev, aiMsg]);
+          setState(AppState.SUCCESS);
+      }
+  }, [initialApp]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   useEffect(() => {
-    if (initialPrompt && state === AppState.IDLE) {
+    if (initialPrompt && state === AppState.IDLE && !app) { // Add !app check
         handleSubmit(initialPrompt);
         if (onPromptHandled) onPromptHandled();
     }
   }, [initialPrompt]);
 
+  // ... (Keep remaining methods: handleAddIntegration, handleMicClick, handleBoostUI, handleSubmit, handleApprovePlan) ...
   const handleAddIntegration = (integration: Integration, apiKey?: string, customOption?: string) => {
     let instruction = `\n\n[System: Add Functionality]\nIntegration: ${integration.name}\nDescription: ${integration.description}\nTechnical Context: ${integration.contextPrompt}`;
     if (apiKey) instruction += `\nAPI KEY: ${apiKey}`;
@@ -269,6 +286,7 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
       );
   }
 
+  // ... (Rest of JSX Render for BuildPage) ...
   return (
     <div className="flex-1 flex flex-col md:flex-row h-screen overflow-hidden bg-black">
       {/* LEFT PANEL */}

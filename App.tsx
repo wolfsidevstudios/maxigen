@@ -15,7 +15,7 @@ import { IntegrationsModal } from './components/IntegrationsModal';
 import { MobileSimulator } from './components/MobileSimulator';
 import { DeployView } from './components/DeployView';
 import { MarketingPage } from './components/MarketingPage';
-import { TemplatesPage } from './components/TemplatesPage'; // New Import
+import { TemplatesPage } from './components/TemplatesPage';
 import { LoginPage } from './components/LoginPage'; 
 import { auth } from './services/firebaseConfig'; 
 import { onAuthStateChanged, User, signOut } from 'firebase/auth'; 
@@ -23,8 +23,12 @@ import { Integration } from './services/integrationsService';
 import { ChatMessage, AppState, CanvasApp, Platform, Page, UserProfile, Project, GenerationMode, ViewMode, AIModel, GeneratedApp } from './types';
 import { AdOverlay } from './components/AdOverlay';
 import { CreditsModal } from './components/CreditsModal';
+import { AiAssistant } from './components/AiAssistant';
+import { WidgetLayer } from './components/WidgetLayer';
+import { processVoiceCommand, WidgetData } from './services/aiCommandService';
+import { speakText } from './services/elevenLabsService';
+import { GoogleGenAI } from '@google/genai';
 
-// ... (Keep existing LandingPageProps interface and LandingPage component code exactly as is) ...
 interface LandingPageProps {
   onSearch: (text: string, image?: string, mode?: GenerationMode, url?: string) => void;
   platform: Platform;
@@ -382,6 +386,10 @@ export default function App() {
   // Credits Management
   const [showCreditsModal, setShowCreditsModal] = useState(false);
 
+  // AI Assistant & Widgets
+  const [showAiAssistant, setShowAiAssistant] = useState(false);
+  const [widgets, setWidgets] = useState<WidgetData[]>([]);
+
   // Core App State
   const [input, setInput] = useState('');
   const [state, setState] = useState<AppState>(AppState.IDLE);
@@ -419,6 +427,8 @@ export default function App() {
   
   const canvasRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const [loadedApp, setLoadedApp] = useState<GeneratedApp | null>(null);
 
   // AUTH LISTENER
   useEffect(() => {
@@ -440,6 +450,65 @@ export default function App() {
     });
     return () => unsubscribe();
   }, [viewState]);
+
+  // Handle Widget & Voice Commands
+  const handleAiCommand = async (transcript: string) => {
+      // 1. Process via local logic first
+      const result = await processVoiceCommand(
+          transcript, 
+          (widget) => setWidgets(prev => [...prev, widget]), // Add Widget callback
+          (prompt) => startBackgroundBuild(prompt) // Trigger Build callback
+      );
+
+      // 2. If result is special flag, send to Gemini
+      if (result === "AI_PROCESS_NEEDED") {
+          try {
+              const ai = new GoogleGenAI({ apiKey: localStorage.getItem('gemini_api_key') || process.env.API_KEY });
+              const response = await ai.models.generateContent({
+                  model: 'gemini-2.5-flash',
+                  contents: transcript,
+                  config: { systemInstruction: "You are a helpful AI assistant for an app builder. Keep responses concise and conversational." }
+              });
+              const reply = response.text || "I'm not sure how to help with that.";
+              await speakText(reply);
+          } catch (e) {
+              await speakText("I'm having trouble connecting to my brain right now.");
+          }
+      } else {
+          // 3. Else speak the local command result
+          await speakText(result);
+      }
+  };
+
+  const startBackgroundBuild = async (prompt: string) => {
+      // Logic to build in "background" -> We simulate by calling generateAppCode but not blocking UI immediately
+      // Update widget status to 'building' is handled in processVoiceCommand
+      
+      try {
+          const { screens, explanation, edgeFunctions } = await generateAppCode(prompt, 'web');
+          
+          // Update the widget to "Ready"
+          setWidgets(prev => prev.map(w => {
+              if (w.type === 'builder' && w.data.prompt === prompt) {
+                  return { ...w, data: { ...w.data, status: 'ready', app: { ...screens[0], edgeFunctions } } };
+              }
+              return w;
+          }));
+          
+          await speakText("Your app is ready. Check the widget.");
+
+      } catch (e) {
+          console.error(e);
+          setWidgets(prev => prev.filter(w => !(w.type === 'builder' && w.data.prompt === prompt))); // Remove failed
+          await speakText("Something went wrong while building your app.");
+      }
+  };
+
+  const handleOpenBackgroundApp = (appData: GeneratedApp) => {
+      // Switch to build page and load the app
+      setActivePage('build');
+      setLoadedApp(appData);
+  };
 
   const handleLogout = async () => {
     try {
@@ -538,6 +607,28 @@ export default function App() {
       }
       setInput(prev => prev + instruction);
       setShowIntegrationsModal(false);
+  };
+
+  const handleAnnotationCapture = (image: string) => {
+      setPendingAttachment(image);
+      setShowAnnotationModal(false);
+  };
+
+  const handleMicClick = () => {
+      if (isListening) {
+          recognitionRef.current?.stop();
+          setIsListening(false);
+      } else {
+          setIsListening(true);
+          recognitionRef.current = speechToText.start(
+              (transcript) => setInput(prev => prev + (prev ? ' ' : '') + transcript),
+              () => setIsListening(false)
+          );
+      }
+  };
+
+  const handleBoostUI = () => {
+      setInput(prev => prev + (prev ? ' ' : '') + " [BOOST UI: Ultra-modern, 28px radius cards, padded images]");
   };
 
   const processInput = async (text: string, image?: string, mode?: GenerationMode, url?: string) => {
@@ -647,56 +738,10 @@ export default function App() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    processInput(input);
-  };
-
-  const handleMicClick = () => {
-    if (isListening) {
-        recognitionRef.current?.stop();
-        setIsListening(false);
-    } else {
-        setIsListening(true);
-        recognitionRef.current = speechToText.start(
-            (transcript) => setInput(prev => prev + (prev ? ' ' : '') + transcript),
-            () => setIsListening(false)
-        );
-    }
-  };
-
-  const handleBoostUI = () => {
-      setInput(prev => prev + (prev ? ' ' : '') + " [BOOST UI: Ultra-modern, 28px radius cards, padded images]");
-  };
-
-  const updateAppPosition = (id: string, pos: { x: number, y: number }) => {
-    setCanvasApps(prev => prev.map(app => 
-        app.id === id ? { ...app, x: pos.x, y: pos.y } : app
-    ));
-  };
-
-  const removeApp = (id: string) => {
-    setCanvasApps(prev => prev.filter(app => app.id !== id));
-    if (selectedAppId === id) setSelectedAppId(null);
-  };
-
-  const focusApp = (id: string) => {
-    setCanvasApps(prev => prev.map(app => 
-        app.id === id ? { ...app, zIndex: topZIndex + 1 } : app
-    ));
-    setTopZIndex(prev => prev + 1);
-  };
-
-  const handleClearCanvas = () => {
-    if (confirm("Clear all screens from the canvas?")) {
-        setCanvasApps([]);
-        setSelectedAppId(null);
-        setTopZIndex(10);
-    }
-  };
-
-  const handleAnnotationCapture = (base64: string) => {
-    setPendingAttachment(base64);
+  const handleSubmit = (e?: React.FormEvent | React.MouseEvent) => {
+      if (e) e.preventDefault();
+      if (!input.trim() && !pendingAttachment) return;
+      processInput(input, pendingAttachment || undefined);
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -749,7 +794,14 @@ export default function App() {
   if (messages.length === 0 && canvasApps.length === 0 && activePage === 'home') {
       return (
         <div className="flex h-screen w-full bg-black font-sans selection:bg-white selection:text-black overflow-hidden">
-            <Sidebar activePage={activePage} onNavigate={setActivePage} recentProjects={projects} onNewProject={handleNewProject} credits={userProfile.credits} />
+            <Sidebar 
+                activePage={activePage} 
+                onNavigate={setActivePage} 
+                recentProjects={projects} 
+                onNewProject={handleNewProject} 
+                credits={userProfile.credits}
+                onOpenAssistant={() => setShowAiAssistant(true)} 
+            />
             <div className="flex-1 relative overflow-hidden bg-black">
                 <LandingPage 
                     onSearch={processInput} 
@@ -773,6 +825,17 @@ export default function App() {
                 onClose={() => setShowCreditsModal(false)}
                 onReward={handleRewardCredits}
             />
+
+            <AiAssistant 
+                isOpen={showAiAssistant} 
+                onClose={() => setShowAiAssistant(false)} 
+                onCommand={handleAiCommand}
+            />
+            <WidgetLayer 
+                widgets={widgets} 
+                onRemove={(id) => setWidgets(prev => prev.filter(w => w.id !== id))} 
+                onViewApp={handleOpenBackgroundApp}
+            />
         </div>
       );
   }
@@ -780,7 +843,14 @@ export default function App() {
   return (
     <div className="h-screen bg-black text-white flex overflow-hidden font-sans selection:bg-white selection:text-black">
       
-      <Sidebar activePage={activePage} onNavigate={setActivePage} recentProjects={projects} onNewProject={handleNewProject} credits={userProfile.credits} />
+      <Sidebar 
+        activePage={activePage} 
+        onNavigate={setActivePage} 
+        recentProjects={projects} 
+        onNewProject={handleNewProject} 
+        credits={userProfile.credits}
+        onOpenAssistant={() => setShowAiAssistant(true)} 
+      />
       
       <AnnotationModal 
         isOpen={showAnnotationModal}
@@ -799,6 +869,17 @@ export default function App() {
           isOpen={showCreditsModal}
           onClose={() => setShowCreditsModal(false)}
           onReward={handleRewardCredits}
+      />
+
+      <AiAssistant 
+          isOpen={showAiAssistant} 
+          onClose={() => setShowAiAssistant(false)} 
+          onCommand={handleAiCommand}
+      />
+      <WidgetLayer 
+          widgets={widgets} 
+          onRemove={(id) => setWidgets(prev => prev.filter(w => w.id !== id))} 
+          onViewApp={handleOpenBackgroundApp}
       />
 
       <div className="flex-1 flex flex-col md:flex-row relative overflow-hidden">
@@ -822,6 +903,8 @@ export default function App() {
                 initialPrompt={pendingBuildPrompt}
                 onPromptHandled={() => setPendingBuildPrompt(null)}
                 checkCredits={checkAndConsumeCredit}
+                // Pass loaded app if opened from widget
+                initialApp={loadedApp}
             />
         )}
 
@@ -832,7 +915,7 @@ export default function App() {
         {activePage === 'home' && (
         <>
             <div className="w-full md:w-[400px] flex flex-col border-r border-zinc-800 h-[40vh] md:h-screen relative z-30 bg-black shadow-xl shadow-black/50">
-                <div className="h-16 flex items-center px-6 justify-between bg-black/80 backdrop-blur-md sticky top-0 z-20 border-b border-zinc-800 shrink-0">
+               <div className="h-16 flex items-center px-6 justify-between bg-black/80 backdrop-blur-md sticky top-0 z-20 border-b border-zinc-800 shrink-0">
                     <span className="font-bold text-lg tracking-tight text-white">MaxiGen</span>
                     
                     <div className="flex bg-zinc-900 p-0.5 rounded-lg border border-zinc-800">
@@ -881,64 +964,6 @@ export default function App() {
                     >
                         {msg.content}
                     </div>
-                    {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
-                        <div className="mt-2 pl-1 flex flex-wrap gap-1">
-                            {msg.sources.slice(0, 3).map((source, i) => (
-                                <a 
-                                    key={i} 
-                                    href={source.uri} 
-                                    target="_blank" 
-                                    rel="noreferrer" 
-                                    className="flex items-center gap-1 text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-400 px-2 py-1 rounded-full border border-zinc-700 transition-colors"
-                                >
-                                    <Globe size={10} />
-                                    <span className="truncate max-w-[100px]">{source.title}</span>
-                                </a>
-                            ))}
-                        </div>
-                    )}
-                    
-                    {msg.role === 'assistant' && msg.suggestedIntegrations && msg.suggestedIntegrations.length > 0 && idx === messages.length - 1 && (
-                        <div className="mt-3 w-full bg-gradient-to-br from-zinc-900 to-zinc-800 rounded-xl p-4 text-white shadow-lg border border-zinc-700">
-                             <div className="flex items-center gap-2 mb-3">
-                                 <div className="p-1.5 bg-white/10 rounded-lg">
-                                     <Zap size={16} className="text-yellow-400" fill="currentColor" />
-                                 </div>
-                                 <span className="font-bold text-sm">Make it Functional</span>
-                             </div>
-                             <p className="text-xs text-zinc-300 mb-4 leading-relaxed">
-                                 Ready to turn this design into a real app? I can add these integrations for you:
-                             </p>
-                             <div className="flex flex-wrap gap-2 mb-4">
-                                 {msg.suggestedIntegrations.map((int, i) => (
-                                     <span key={i} className="px-2 py-1 bg-white/10 rounded text-[10px] font-mono border border-white/5">{int}</span>
-                                 ))}
-                             </div>
-                             <button 
-                                onClick={() => { setViewMode('prototype'); setInput("Add these integrations and make the app fully functional."); }}
-                                className="w-full py-2 bg-white text-black rounded-lg text-xs font-bold hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2"
-                             >
-                                 <Play size={12} fill="currentColor" /> Start Prototype Mode
-                             </button>
-                        </div>
-                    )}
-
-                    {msg.role === 'assistant' && msg.appData && !msg.suggestedIntegrations && (
-                        <span className="text-[10px] text-zinc-500 mt-1 pl-1 flex items-center gap-1">
-                            {msg.appData.name.includes('Screens') ? (
-                            <>
-                                <Layers size={10} />
-                                Generated {msg.appData.name}
-                            </>
-                            ) : (
-                            <>
-                                Generated "{msg.appData.name}"
-                                <span className="w-1 h-1 rounded-full bg-zinc-600 mx-1"></span>
-                                {msg.appData.platform === 'web' ? <Monitor size={8} /> : <Smartphone size={8} />}
-                            </>
-                            )}
-                        </span>
-                    )}
                     </motion.div>
                 ))}
                 
@@ -957,105 +982,103 @@ export default function App() {
                 <div ref={messagesEndRef} />
                 </div>
 
+                {/* Input Area */}
                 <div className="absolute bottom-0 left-0 w-full p-4 bg-black/95 backdrop-blur-sm border-t border-zinc-800">
-                
-                <AnimatePresence>
-                    {selectedAppId && (
-                        <motion.div 
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="flex items-center justify-between bg-blue-900/30 text-blue-300 px-3 py-2 rounded-lg mb-2 text-xs font-medium border border-blue-500/20"
-                        >
-                            <div className="flex items-center gap-2">
-                                <Pencil size={12} />
-                                <span>{viewMode === 'prototype' ? 'Editing in Prototype Mode' : `Redesigning ${canvasApps.find(a => a.id === selectedAppId)?.data.name}`}</span>
-                            </div>
-                            <button 
-                                onClick={() => { setSelectedAppId(null); }}
-                                className="p-1 hover:bg-blue-900/50 rounded text-blue-400"
+                    <AnimatePresence>
+                        {selectedAppId && (
+                            <motion.div 
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="flex items-center justify-between bg-blue-900/30 text-blue-300 px-3 py-2 rounded-lg mb-2 text-xs font-medium border border-blue-500/20"
                             >
-                                <X size={12} />
+                                <div className="flex items-center gap-2">
+                                    <Pencil size={12} />
+                                    <span>{viewMode === 'prototype' ? 'Editing in Prototype Mode' : `Redesigning ${canvasApps.find(a => a.id === selectedAppId)?.data.name}`}</span>
+                                </div>
+                                <button 
+                                    onClick={() => { setSelectedAppId(null); }}
+                                    className="p-1 hover:bg-blue-900/50 rounded text-blue-400"
+                                >
+                                    <X size={12} />
+                                </button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {pendingAttachment && (
+                        <div className="relative inline-block mb-2">
+                            <img src={`data:image/png;base64,${pendingAttachment}`} alt="Pending" className="h-16 rounded-md border border-zinc-700" />
+                            <button 
+                                onClick={() => setPendingAttachment(null)}
+                                className="absolute -top-1 -right-1 bg-black text-white rounded-full p-0.5 border border-zinc-700"
+                            >
+                                <X size={10} />
                             </button>
-                        </motion.div>
+                        </div>
                     )}
-                </AnimatePresence>
 
-                {pendingAttachment && (
-                    <div className="relative inline-block mb-2">
-                        <img src={`data:image/png;base64,${pendingAttachment}`} alt="Pending" className="h-16 rounded-md border border-zinc-700" />
-                        <button 
-                            onClick={() => setPendingAttachment(null)}
-                            className="absolute -top-1 -right-1 bg-black text-white rounded-full p-0.5 border border-zinc-700"
-                        >
-                            <X size={10} />
-                        </button>
-                    </div>
-                )}
-
-                <div className="shimmer-input-wrapper">
-                    <div className="shimmer-input-content flex flex-col focus-within:ring-1 focus-within:ring-zinc-700 transition-all">
-                    <textarea
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        placeholder={viewMode === 'prototype' ? "Describe functionality to add..." : (selectedAppId ? "Describe changes..." : "Describe your app...")}
-                        className="w-full bg-transparent text-sm p-4 min-h-[50px] max-h-[120px] resize-none outline-none text-white placeholder:text-zinc-600 font-medium custom-scrollbar"
-                        disabled={state === AppState.GENERATING}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSubmit(e);
-                            }
-                        }}
-                    />
-                    
-                    <div className="flex items-center justify-between px-3 pb-3">
-                        <div className="flex items-center gap-1 relative">
-                            <button 
-                                onClick={() => setShowIntegrationsModal(true)}
-                                className="p-2 hover:bg-zinc-800 rounded-full text-zinc-500 hover:text-zinc-300 transition-colors" 
-                                title="Add Integration"
-                            >
-                                <Plus size={18} />
-                            </button>
-                            
-                            <button 
-                                type="button"
-                                onClick={() => setShowAnnotationModal(true)}
-                                className="p-2 rounded-full transition-colors hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300" 
-                                title="Annotate & Edit"
-                            >
-                                <Pencil size={18} />
-                            </button>
-
-                            <button 
-                                type="button"
-                                onClick={handleBoostUI}
-                                className="p-2 rounded-full transition-colors hover:bg-purple-900/30 text-purple-400" 
-                                title="Boost UI"
-                            >
-                                <Rocket size={18} />
-                            </button>
-                        </div>
+                    <div className="shimmer-input-wrapper">
+                        <div className="shimmer-input-content flex flex-col focus-within:ring-1 focus-within:ring-zinc-700 transition-all">
+                        <textarea
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            placeholder={viewMode === 'prototype' ? "Describe functionality to add..." : (selectedAppId ? "Describe changes..." : "Describe your app...")}
+                            className="w-full bg-transparent text-sm p-4 min-h-[50px] max-h-[120px] resize-none outline-none text-white placeholder:text-zinc-600 font-medium custom-scrollbar"
+                            disabled={state === AppState.GENERATING}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSubmit(e);
+                                }
+                            }}
+                        />
                         
-                        <div className="flex items-center gap-2">
-                            <button 
-                                onClick={handleMicClick}
-                                className={`p-2 rounded-full transition-colors flex items-center justify-center ${isListening ? 'bg-zinc-800 text-white' : 'hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300'}`}
-                            >
-                                {isListening ? <AudioWave /> : <Mic size={18} />}
-                            </button>
-                            <button
-                                onClick={handleSubmit}
-                                disabled={!input.trim() || state === AppState.GENERATING}
-                                className="h-8 w-8 bg-white hover:bg-zinc-200 rounded-full flex items-center justify-center text-black transition-all shadow-sm active:scale-95 disabled:opacity-30 disabled:bg-zinc-800 disabled:text-zinc-500"
-                            >
-                                {state === AppState.GENERATING ? <Loader2 size={14} className="animate-spin" /> : <ArrowUp size={16} strokeWidth={2.5} />}
-                            </button>
+                        <div className="flex items-center justify-between px-3 pb-3">
+                            <div className="flex items-center gap-1 relative">
+                                <button 
+                                    onClick={() => setShowIntegrationsModal(true)}
+                                    className="p-2 hover:bg-zinc-800 rounded-full text-zinc-500 hover:text-zinc-300 transition-colors" 
+                                    title="Add Integration"
+                                >
+                                    <Plus size={18} />
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={() => setShowAnnotationModal(true)}
+                                    className="p-2 rounded-full transition-colors hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300" 
+                                    title="Annotate & Edit"
+                                >
+                                    <Pencil size={18} />
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={handleBoostUI}
+                                    className="p-2 rounded-full transition-colors hover:bg-purple-900/30 text-purple-400" 
+                                    title="Boost UI"
+                                >
+                                    <Rocket size={18} />
+                                </button>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                                <button 
+                                    onClick={handleMicClick}
+                                    className={`p-2 rounded-full transition-colors flex items-center justify-center ${isListening ? 'bg-zinc-800 text-white' : 'hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300'}`}
+                                >
+                                    {isListening ? <AudioWave /> : <Mic size={18} />}
+                                </button>
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={!input.trim() || state === AppState.GENERATING}
+                                    className="h-8 w-8 bg-white hover:bg-zinc-200 rounded-full flex items-center justify-center text-black transition-all shadow-sm active:scale-95 disabled:opacity-30 disabled:bg-zinc-800 disabled:text-zinc-500"
+                                >
+                                    {state === AppState.GENERATING ? <Loader2 size={14} className="animate-spin" /> : <ArrowUp size={16} strokeWidth={2.5} />}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-                </div>
+                    </div>
                 </div>
             </div>
 
@@ -1087,7 +1110,7 @@ export default function App() {
                             <button onClick={() => setZoom(Math.min(2, zoom + 0.1))} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 hover:text-white"><ZoomIn size={16} /></button>
                             <div className="w-px h-4 bg-zinc-700 mx-1"></div>
                             <button onClick={() => { setZoom(1); setPan({x:0,y:0}); }} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 hover:text-white" title="Reset View"><RotateCcw size={16} /></button>
-                            <button onClick={handleClearCanvas} className="p-2 hover:bg-red-900/30 hover:text-red-400 rounded-full text-zinc-400" title="Clear Canvas"><Trash2 size={16} /></button>
+                            <button onClick={() => { setCanvasApps([]); setSelectedAppId(null); }} className="p-2 hover:bg-red-900/30 hover:text-red-400 rounded-full text-zinc-400" title="Clear Canvas"><Trash2 size={16} /></button>
                         </div>
 
                         <motion.div 
@@ -1101,13 +1124,10 @@ export default function App() {
                                         <DraggableApp 
                                             app={app} 
                                             isSelected={selectedAppId === app.id}
-                                            onUpdate={updateAppPosition}
-                                            onRemove={removeApp}
-                                            onFocus={focusApp}
-                                            onSelect={(id) => {
-                                                setSelectedAppId(id);
-                                                focusApp(id);
-                                            }}
+                                            onUpdate={(id, pos) => setCanvasApps(p => p.map(a => a.id === id ? { ...a, ...pos } : a))}
+                                            onRemove={(id) => { setCanvasApps(p => p.filter(a => a.id !== id)); if(selectedAppId===id) setSelectedAppId(null); }}
+                                            onFocus={(id) => { setCanvasApps(p => p.map(a => a.id === id ? { ...a, zIndex: topZIndex + 1 } : a)); setTopZIndex(p => p + 1); }}
+                                            onSelect={(id) => { setSelectedAppId(id); setCanvasApps(p => p.map(a => a.id === id ? { ...a, zIndex: topZIndex + 1 } : a)); setTopZIndex(p => p + 1); }}
                                         />
                                     </div>
                                 ))}
