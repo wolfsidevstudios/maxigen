@@ -109,7 +109,8 @@ export const CONNECTED_APPS: Integration[] = [
     { id: 'algolia', name: 'Algolia', description: 'Fast search APIs.', category: 'connected_app', requiresKey: true, keyUrl: 'https://dashboard.algolia.com/account/api-keys', contextPrompt: 'Use Algolia Search client.' },
     { id: 'mapbox', name: 'Mapbox', description: 'Custom maps and location.', category: 'connected_app', requiresKey: true, keyUrl: 'https://account.mapbox.com/', contextPrompt: 'Use Mapbox GL JS.' },
     { id: 'replicate', name: 'Replicate', description: 'Run AI models in cloud.', category: 'connected_app', requiresKey: true, keyUrl: 'https://replicate.com/account/api-tokens', contextPrompt: 'Call Replicate API for ML models.' },
-    { id: 'clerk', name: 'Clerk', description: 'Authentication and User Mgmt.', category: 'connected_app', requiresKey: true, keyUrl: 'https://dashboard.clerk.com/', contextPrompt: 'Use Clerk React SDK.' }
+    { id: 'clerk', name: 'Clerk', description: 'Authentication and User Mgmt.', category: 'connected_app', requiresKey: true, keyUrl: 'https://dashboard.clerk.com/', contextPrompt: 'Use Clerk React SDK.' },
+    { id: 'netlify', name: 'Netlify', description: 'Web hosting and serverless functions.', category: 'connected_app', requiresKey: true, keyUrl: 'https://app.netlify.com/user/applications/personal', contextPrompt: 'Deploy static assets to Netlify.' }
 ];
 
 export const MCP_INTEGRATIONS: Integration[] = [

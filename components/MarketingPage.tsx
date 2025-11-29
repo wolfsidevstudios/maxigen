@@ -2,6 +2,10 @@ import React, { useEffect, useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { Sparkles, Zap, Smartphone, Globe, Code2, ArrowRight, Layers, Cpu, Rocket, Shield, CheckCircle2, Terminal, Database, Play, DollarSign, Users, Timer, Star } from 'lucide-react';
 
+const NetlifyIcon = () => (
+  <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fillRule="evenodd" clipRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2" className="w-full h-full"><g transform="translate(9.167 9.167) scale(11.5703)"><clipPath id="prefix__a"><path d="M0 0h42.667v42.667H0z"/></clipPath><g clipPath="url(#prefix__a)"><path d="M23.99 24.43h-5.317l-.44-.44v-5.317l.44-.44h5.316l.442.44v5.316l-.442.442z" fill="#014847" fillRule="nonzero"/><g fill="#05bdba" fillRule="nonzero"><path d="M12.928 32.441h-.452l-2.255-2.254v-.448l3.447-3.451 2.388.004.319.315v2.388l-3.447 3.446zM10.221 12.928v-.452l2.255-2.255h.452l3.447 3.447v2.384l-.319.323h-2.388l-3.447-3.447zM13.395 23.25H.273L0 22.974v-3.287l.273-.275h13.122l.273.275v3.287l-.273.274zM42.393 23.25H29.272l-.273-.275v-3.287l.273-.275h13.121l.274.275v3.287l-.274.274zM19.417 13.395V3.553l.275-.273h3.287l.274.273v9.842l-.274.273h-3.287l-.275-.273zM19.417 39.11v-9.84l.275-.275h3.287l.274.274v9.84l-.274.274h-3.287l-.275-.274z"/></g></g></g></svg>
+);
+
 interface MarketingPageProps {
   onGetStarted: () => void;
 }
@@ -217,7 +221,7 @@ export const MarketingPage: React.FC<MarketingPageProps> = ({ onGetStarted }) =>
                   {[
                       { icon: <Smartphone size={32} />, title: "Describe", desc: "Tell MaxiGen what you want to build using natural language." },
                       { icon: <Sparkles size={32} />, title: "Generate", desc: "Our AI engine writes the code, sets up the database, and styles the UI." },
-                      { icon: <Rocket size={32} />, title: "Deploy", desc: "Push to Vercel or download the code for your own pipeline." }
+                      { icon: <Rocket size={32} />, title: "Deploy", desc: "Push to Netlify or download the code for your own pipeline." }
                   ].map((step, i) => (
                       <motion.div 
                           key={i}
@@ -295,11 +299,11 @@ export const MarketingPage: React.FC<MarketingPageProps> = ({ onGetStarted }) =>
                     <div className="absolute inset-0 bg-gradient-to-br from-black to-zinc-900 z-0" />
                     <div className="relative z-10 mt-auto flex items-end justify-between">
                         <div>
-                            <div className="w-12 h-12 bg-orange-500/20 rounded-2xl flex items-center justify-center mb-4 text-orange-400">
+                            <div className="w-12 h-12 bg-teal-500/20 rounded-2xl flex items-center justify-center mb-4 text-teal-400">
                                 <Rocket size={24} />
                             </div>
-                            <h3 className="text-2xl font-bold mb-2">Instant Deployment</h3>
-                            <p className="text-zinc-400">One-click Vercel deploys.</p>
+                            <h3 className="text-2xl font-bold mb-2">Instant Netlify Deploy</h3>
+                            <p className="text-zinc-400">One-click static deployments to global edge network.</p>
                         </div>
                         <button onClick={onGetStarted} className="bg-white text-black px-6 py-2 rounded-full font-bold text-sm hidden md:block hover:bg-zinc-200">
                             Try It Now
@@ -372,7 +376,7 @@ export const MarketingPage: React.FC<MarketingPageProps> = ({ onGetStarted }) =>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
                   {[
                       { name: "Firebase", icon: <Database size={40} className="text-orange-500" /> },
-                      { name: "Vercel", icon: <Rocket size={40} className="text-black bg-white rounded-full p-1" /> },
+                      { name: "Netlify", icon: <div className="w-10 h-10"><NetlifyIcon /></div> },
                       { name: "Stripe", icon: <DollarSign size={40} className="text-purple-500" /> },
                       { name: "GitHub", icon: <Code2 size={40} className="text-white" /> }
                   ].map((service, i) => (
@@ -381,7 +385,7 @@ export const MarketingPage: React.FC<MarketingPageProps> = ({ onGetStarted }) =>
                         whileHover={{ scale: 1.1 }}
                         className="flex flex-col items-center gap-4"
                       >
-                          <div className="w-20 h-20 rounded-3xl bg-black border border-white/10 flex items-center justify-center shadow-xl">
+                          <div className="w-20 h-20 rounded-3xl bg-black border border-white/10 flex items-center justify-center shadow-xl p-4">
                               {service.icon}
                           </div>
                           <span className="font-bold text-lg">{service.name}</span>

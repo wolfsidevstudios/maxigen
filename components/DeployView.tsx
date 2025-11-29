@@ -1,9 +1,12 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { GeneratedApp } from '../types';
-import { deployToVercel, getDeploymentStatus } from '../services/vercelService';
-import { Rocket, CheckCircle, ExternalLink, Loader2, AlertTriangle, Key, Save } from 'lucide-react';
+import { deployToNetlify } from '../services/netlifyService';
+import { Rocket, CheckCircle, ExternalLink, Loader2, AlertTriangle, Key } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+const NetlifyIcon = () => (
+  <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fillRule="evenodd" clipRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2" className="w-full h-full"><g transform="translate(9.167 9.167) scale(11.5703)"><clipPath id="prefix__a"><path d="M0 0h42.667v42.667H0z"/></clipPath><g clipPath="url(#prefix__a)"><path d="M23.99 24.43h-5.317l-.44-.44v-5.317l.44-.44h5.316l.442.44v5.316l-.442.442z" fill="#014847" fillRule="nonzero"/><g fill="#05bdba" fillRule="nonzero"><path d="M12.928 32.441h-.452l-2.255-2.254v-.448l3.447-3.451 2.388.004.319.315v2.388l-3.447 3.446zM10.221 12.928v-.452l2.255-2.255h.452l3.447 3.447v2.384l-.319.323h-2.388l-3.447-3.447zM13.395 23.25H.273L0 22.974v-3.287l.273-.275h13.122l.273.275v3.287l-.273.274zM42.393 23.25H29.272l-.273-.275v-3.287l.273-.275h13.121l.274.275v3.287l-.274.274zM19.417 13.395V3.553l.275-.273h3.287l.274.273v9.842l-.274.273h-3.287l-.275-.273zM19.417 39.11v-9.84l.275-.275h3.287l.274.274v9.84l-.274.274h-3.287l-.275-.274z"/></g></g></g></svg>
+);
 
 interface DeployViewProps {
   app: GeneratedApp;
@@ -17,14 +20,11 @@ export const DeployView: React.FC<DeployViewProps> = ({ app, onSuccess }) => {
   const [errorMsg, setErrorMsg] = useState('');
   const [logs, setLogs] = useState<string[]>([]);
   
-  // Ref to handle unmount updates
   const isMounted = useRef(true);
   useEffect(() => {
       isMounted.current = true;
-      // Load token from local storage
-      const savedToken = localStorage.getItem('vercel_token');
+      const savedToken = localStorage.getItem('netlify_token');
       if (savedToken) setToken(savedToken);
-      
       return () => { isMounted.current = false; };
   }, []);
 
@@ -34,69 +34,33 @@ export const DeployView: React.FC<DeployViewProps> = ({ app, onSuccess }) => {
 
   const handleDeploy = async () => {
     if (!token) {
-        setErrorMsg("Please enter your Vercel API Token");
+        setErrorMsg("Please enter your Netlify Personal Access Token");
         return;
     }
 
-    // Save token
-    localStorage.setItem('vercel_token', token);
+    localStorage.setItem('netlify_token', token);
 
     setStatus('deploying');
     setLogs([]);
     setErrorMsg('');
     addLog("Initializing deployment sequence...");
-    addLog(`Target: Vercel Cloud`);
+    addLog(`Target: Netlify Cloud`);
     addLog(`Project: ${app.name}`);
     
     try {
-        addLog("Bundling assets (React + Vite)...");
-        // Simulated bundling delay for UX
-        await new Promise(r => setTimeout(r, 800));
-        addLog("Configuring package.json...");
-        addLog("Uploading files to Vercel...");
+        addLog("Preparing static assets...");
+        await new Promise(r => setTimeout(r, 800)); // Sim delay
+        addLog("Bundling files...");
         
-        const result = await deployToVercel({
-            token,
-            projectName: app.name,
-            appData: app
-        });
+        const result = await deployToNetlify(token, app);
         
-        addLog("Upload complete. Build queued.");
-        addLog(`Deployment ID: ${result.id}`);
-        addLog("Waiting for build to complete...");
-
-        // POLLING LOOP
-        const deploymentId = result.id;
-        const pollInterval = setInterval(async () => {
-            if (!isMounted.current) {
-                clearInterval(pollInterval);
-                return;
-            }
-            try {
-                const statusData = await getDeploymentStatus(token, deploymentId);
-                const state = statusData.readyState; // QUEUED, BUILDING, READY, ERROR, CANCELED
-
-                if (state === 'READY') {
-                    clearInterval(pollInterval);
-                    const finalUrl = `https://${statusData.url}`;
-                    setDeployUrl(finalUrl);
-                    addLog("Build successful!");
-                    addLog(`Live URL: ${finalUrl}`);
-                    setStatus('success');
-                    if (onSuccess) onSuccess(finalUrl);
-                } else if (state === 'ERROR' || state === 'CANCELED') {
-                    clearInterval(pollInterval);
-                    setStatus('error');
-                    setErrorMsg("Build failed on Vercel side. Check logs in Vercel dashboard.");
-                    addLog(`Error: Deployment state is ${state}`);
-                } else {
-                    addLog(`Status: ${state}...`);
-                }
-            } catch (err: any) {
-                // If checking status fails (e.g. network), just log and retry
-                addLog(`Status check warning: ${err.message}`);
-            }
-        }, 3000);
+        addLog("Upload complete.");
+        addLog(`Site ID: ${result.id}`);
+        addLog("Deployment successful!");
+        
+        setDeployUrl(result.url);
+        setStatus('success');
+        if (onSuccess) onSuccess(result.url);
 
     } catch (err: any) {
         console.error(err);
@@ -113,10 +77,12 @@ export const DeployView: React.FC<DeployViewProps> = ({ app, onSuccess }) => {
             <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900">
                 <div>
                     <h2 className="text-lg font-bold flex items-center gap-2 text-white">
-                        <Rocket size={18} className="text-white" />
-                        Deploy to Vercel
+                        <div className="w-6 h-6 rounded bg-zinc-800 p-1">
+                            <NetlifyIcon />
+                        </div>
+                        Deploy to Netlify
                     </h2>
-                    <p className="text-zinc-400 text-xs mt-1">Updates will target the same project URL.</p>
+                    <p className="text-zinc-400 text-xs mt-1">Host your app instantly on Netlify's global CDN.</p>
                 </div>
             </div>
 
@@ -133,7 +99,7 @@ export const DeployView: React.FC<DeployViewProps> = ({ app, onSuccess }) => {
                             <CheckCircle size={32} />
                         </div>
                         <h3 className="text-xl font-bold text-green-400 mb-2">Deployed Successfully!</h3>
-                        <p className="text-green-300 mb-6 text-sm">Your changes are live.</p>
+                        <p className="text-green-300 mb-6 text-sm">Your app is live.</p>
                         
                         <div className="flex gap-3 justify-center">
                             <a 
@@ -157,7 +123,7 @@ export const DeployView: React.FC<DeployViewProps> = ({ app, onSuccess }) => {
                         {/* Token Input */}
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
-                                <Key size={12} /> Vercel API Token
+                                <Key size={12} /> Netlify Personal Access Token
                             </label>
                             <div className="relative">
                                 <input 
@@ -170,7 +136,7 @@ export const DeployView: React.FC<DeployViewProps> = ({ app, onSuccess }) => {
                                 {token && <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500"><CheckCircle size={14} /></div>}
                             </div>
                             <p className="text-[10px] text-zinc-500">
-                                Token is saved locally for future deploys.
+                                Found in User Settings {'>'} Applications {'>'} Personal Access Tokens.
                             </p>
                         </div>
 
@@ -188,15 +154,15 @@ export const DeployView: React.FC<DeployViewProps> = ({ app, onSuccess }) => {
                         <button 
                             onClick={handleDeploy}
                             disabled={status === 'deploying' || !token}
-                            className="w-full py-3 bg-white text-black rounded-xl font-bold text-sm hover:bg-zinc-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className="w-full py-3 bg-[#00ad9f] text-white rounded-xl font-bold text-sm hover:bg-[#008f83] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-[#00ad9f]/20"
                         >
                             {status === 'deploying' ? (
                                 <>
                                     <Loader2 size={16} className="animate-spin" />
-                                    Deploying Update...
+                                    Deploying...
                                 </>
                             ) : (
-                                "Deploy Changes"
+                                "Deploy to Netlify"
                             )}
                         </button>
                     </>
