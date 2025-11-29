@@ -2,6 +2,8 @@
 import React, { useEffect, useRef } from 'react';
 import { ProjectFile } from '../types';
 
+const HTML2CANVAS_URL = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+
 interface WebPreviewProps {
   files?: ProjectFile[];
   code?: string;
@@ -10,9 +12,11 @@ interface WebPreviewProps {
   onElementSelect?: (element: { tagName: string; text: string; htmlSnippet: string }) => void;
   isTesting?: boolean;
   onQALog?: (log: { message: string, status: 'active' | 'completed' | 'error' }) => void;
+  captureTrigger?: number;
+  onCapture?: (image: string) => void;
 }
 
-export const WebPreview: React.FC<WebPreviewProps> = ({ files, code, onConsole, isSelectionMode, onElementSelect, isTesting, onQALog }) => {
+export const WebPreview: React.FC<WebPreviewProps> = ({ files, code, onConsole, isSelectionMode, onElementSelect, isTesting, onQALog, captureTrigger, onCapture }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Handle incoming messages from iframe
@@ -27,10 +31,20 @@ export const WebPreview: React.FC<WebPreviewProps> = ({ files, code, onConsole, 
         if (e.data?.type === 'QA_LOG' && onQALog) {
             onQALog(e.data.log);
         }
+        if (e.data?.type === 'EVENT_SCREENSHOT_CAPTURED' && onCapture) {
+            onCapture(e.data.image);
+        }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [onConsole, onElementSelect, onQALog]);
+  }, [onConsole, onElementSelect, onQALog, onCapture]);
+
+  // Handle Capture Trigger
+  useEffect(() => {
+      if (iframeRef.current?.contentWindow && captureTrigger && captureTrigger > 0) {
+          iframeRef.current.contentWindow.postMessage({ type: 'CMD_CAPTURE_SCREENSHOT' }, '*');
+      }
+  }, [captureTrigger]);
 
   // Toggle selection mode in iframe
   useEffect(() => {
@@ -81,8 +95,9 @@ export const WebPreview: React.FC<WebPreviewProps> = ({ files, code, onConsole, 
         content = code || "";
     }
 
-    // Scripts for Console Shim, Element Selection, and QA Testing
+    // Scripts for Console Shim, Element Selection, QA Testing, and Screenshot
     const injectedScripts = `
+      <script src="${HTML2CANVAS_URL}"></script>
       <script>
         (function() {
             // --- CONSOLE SHIM ---
@@ -113,7 +128,35 @@ export const WebPreview: React.FC<WebPreviewProps> = ({ files, code, onConsole, 
                 if (e.data?.type === 'START_QA') {
                     startQARoutine();
                 }
+
+                if (e.data?.type === 'CMD_CAPTURE_SCREENSHOT') {
+                    takeScreenshot();
+                }
             });
+
+            function takeScreenshot() {
+                // Hide cursor if present
+                const cursor = document.getElementById('qa-cursor');
+                if(cursor) cursor.style.display = 'none';
+
+                if (typeof html2canvas !== 'undefined') {
+                    html2canvas(document.body, { 
+                        useCORS: true, 
+                        logging: false, 
+                        scale: 1,
+                        backgroundColor: '#ffffff'
+                    }).then(canvas => {
+                        const img = canvas.toDataURL('image/png');
+                        window.parent.postMessage({ type: 'EVENT_SCREENSHOT_CAPTURED', image: img }, '*');
+                        if(cursor) cursor.style.display = 'flex';
+                    }).catch(err => {
+                        console.error('Screenshot failed', err);
+                        if(cursor) cursor.style.display = 'flex';
+                    });
+                } else {
+                    console.error('html2canvas not loaded');
+                }
+            }
 
             document.addEventListener('mouseover', (e) => {
                 if (!selectionMode) return;
@@ -135,7 +178,6 @@ export const WebPreview: React.FC<WebPreviewProps> = ({ files, code, onConsole, 
 
             document.addEventListener('mouseout', (e) => {
                 if (!selectionMode) return;
-                // We don't clear immediately to avoid flickering when moving between nested elements
             }, true);
 
             document.addEventListener('click', (e) => {

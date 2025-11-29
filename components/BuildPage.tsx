@@ -168,6 +168,9 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
   // Agent State
   const [agentLogs, setAgentLogs] = useState<AgentLog[]>([]);
   const [isTesting, setIsTesting] = useState(false);
+  
+  // Screenshot State
+  const [captureTrigger, setCaptureTrigger] = useState(0);
 
   // Handle Initial App passed from Assistant
   useEffect(() => {
@@ -224,6 +227,17 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
               return [...updated, { id: Date.now().toString(), step: 'qa', message: log.message, status: log.status === 'error' ? 'active' : 'completed' }]; // Keep errors active?
           });
       }
+  };
+
+  const handleScreenshot = (image: string) => {
+      // Add screenshot message
+      const msg: ChatMessage = {
+          role: 'assistant',
+          content: '📸 Captured snapshot of your app:',
+          attachment: image.split(',')[1], // WebPreview sends full data URI
+          timestamp: Date.now()
+      };
+      setMessages(prev => [...prev, msg]);
   };
 
   const handleAddIntegration = (integration: Integration, apiKey?: string, customOption?: string) => {
@@ -299,10 +313,12 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
             setMessages(prev => [...prev, aiMsg]);
             setState(AppState.SUCCESS);
             
-            // Trigger QA after update
+            // Trigger QA and Screenshot
             setTimeout(() => {
                 addAgentLog('qa', 'Initiating automated QA testing...', 'active');
                 setIsTesting(true);
+                // Trigger screenshot after delay
+                setTimeout(() => setCaptureTrigger(prev => prev + 1), 3000);
             }, 1000);
 
         } catch (error) {
@@ -364,10 +380,12 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
           }
           setState(AppState.SUCCESS);
 
-          // Trigger QA
+          // Trigger QA and Screenshot
           setTimeout(() => {
               addAgentLog('qa', 'Initiating automated QA testing...', 'active');
               setIsTesting(true);
+              // Trigger screenshot after delay
+              setTimeout(() => setCaptureTrigger(prev => prev + 1), 3000);
           }, 1000);
 
       } catch (error) {
@@ -397,6 +415,11 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 custom-scrollbar pb-32 bg-zinc-950">
             {messages.map((msg, i) => (
                 <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                    {msg.attachment && (
+                        <div className="mb-2 rounded-lg overflow-hidden border border-zinc-700 shadow-sm max-w-[200px]">
+                            <img src={`data:image/png;base64,${msg.attachment}`} alt="Snapshot" className="w-full h-auto" />
+                        </div>
+                    )}
                     {msg.plan ? (
                         <div className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl">
                              <div className="h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
@@ -573,6 +596,8 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
                             onElementSelect={handleElementSelect}
                             isTesting={isTesting}
                             onQALog={handleQALog}
+                            captureTrigger={captureTrigger}
+                            onCapture={handleScreenshot}
                         />
                     )}
 
