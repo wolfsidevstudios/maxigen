@@ -2,10 +2,12 @@
 import JSZip from 'https://esm.sh/jszip';
 import { GeneratedApp } from '../types';
 
+// User provided Netlify OAuth Credentials
 const CLIENT_ID = '-eROvSTaLUWDqXPPA0JB1d9s9stSUjbsCUOD0UVtgB8';
 const CLIENT_SECRET = 'BCMjZU3XuL7T6arM7kk5jhGkSJevxnPpxUa9GNSgOD0';
 
 export const getAuthUrl = () => {
+    // Redirect URI matches the OOB configuration in Netlify
     return `https://app.netlify.com/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=urn:ietf:wg:oauth:2.0:oob`;
 };
 
@@ -18,7 +20,12 @@ export const exchangeCodeForToken = async (code: string) => {
     params.append('redirect_uri', 'urn:ietf:wg:oauth:2.0:oob');
 
     try {
-        const response = await fetch('https://api.netlify.com/oauth/token', {
+        // Use corsproxy.io to bypass CORS restrictions on client-side OAuth
+        // This is necessary because api.netlify.com does not support CORS for this endpoint from browser
+        const proxyUrl = 'https://corsproxy.io/?'; 
+        const targetUrl = 'https://api.netlify.com/oauth/token';
+        
+        const response = await fetch(proxyUrl + encodeURIComponent(targetUrl), {
             method: 'POST',
             body: params,
             headers: {

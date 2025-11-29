@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GeneratedApp } from '../types';
 import { deployToNetlify, getAuthUrl, exchangeCodeForToken } from '../services/netlifyService';
-import { CheckCircle, ExternalLink, Loader2, AlertTriangle, LogOut, ArrowRight, Lock } from 'lucide-react';
+import { CheckCircle, ExternalLink, Loader2, AlertTriangle, LogOut, ArrowRight, Lock, Key } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const NetlifyIcon = () => (
@@ -25,6 +25,7 @@ export const DeployView: React.FC<DeployViewProps> = ({ app, onSuccess }) => {
   const [oauthStep, setOauthStep] = useState<'init' | 'code' | 'authorized'>('init');
   const [authCode, setAuthCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  const [manualTokenMode, setManualTokenMode] = useState(false);
 
   const isMounted = useRef(true);
   
@@ -58,9 +59,16 @@ export const DeployView: React.FC<DeployViewProps> = ({ app, onSuccess }) => {
           setToken(newToken);
           setOauthStep('authorized');
       } catch (e: any) {
-          setErrorMsg(e.message || "Failed to verify code");
+          setErrorMsg(e.message || "Failed to verify code. Try manual token.");
       } finally {
           setIsVerifying(false);
+      }
+  };
+
+  const handleManualTokenSave = () => {
+      if(token) {
+        localStorage.setItem('netlify_token', token);
+        setOauthStep('authorized');
       }
   };
 
@@ -70,6 +78,7 @@ export const DeployView: React.FC<DeployViewProps> = ({ app, onSuccess }) => {
       setOauthStep('init');
       setAuthCode('');
       setStatus('idle');
+      setManualTokenMode(false);
   };
 
   const handleDeploy = async () => {
@@ -164,7 +173,7 @@ export const DeployView: React.FC<DeployViewProps> = ({ app, onSuccess }) => {
                 ) : (
                     <>
                         {/* Auth Flow */}
-                        {oauthStep === 'init' && (
+                        {oauthStep === 'init' && !manualTokenMode && (
                             <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
                                 <div className="p-4 bg-zinc-950 rounded-full border border-zinc-800 shadow-xl mb-2">
                                     <div className="w-12 h-12">
@@ -179,7 +188,49 @@ export const DeployView: React.FC<DeployViewProps> = ({ app, onSuccess }) => {
                                 >
                                     Connect Netlify <ArrowRight size={16} />
                                 </button>
+
+                                <div className="text-xs text-zinc-600 my-2">- OR -</div>
+
+                                <button 
+                                    onClick={() => setManualTokenMode(true)}
+                                    className="text-xs text-zinc-500 hover:text-white underline"
+                                >
+                                    Use Personal Access Token
+                                </button>
                             </div>
+                        )}
+
+                        {manualTokenMode && oauthStep === 'init' && (
+                             <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
+                                <h3 className="text-white font-bold text-lg">Manual Access Token</h3>
+                                <p className="text-zinc-400 text-sm max-w-xs">Generate a token in Netlify User Settings {'>'} Applications.</p>
+                                
+                                <div className="w-full max-w-sm relative">
+                                    <Key size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                                    <input 
+                                        type="password"
+                                        value={token}
+                                        onChange={(e) => setToken(e.target.value)}
+                                        placeholder="Paste nfp_... token"
+                                        className="w-full pl-10 pr-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-[#00ad9f]/50 text-white text-sm"
+                                    />
+                                </div>
+
+                                <button 
+                                    onClick={handleManualTokenSave}
+                                    disabled={!token}
+                                    className="px-6 py-3 bg-white text-black rounded-xl font-bold text-sm transition-all shadow-lg hover:bg-zinc-200 disabled:opacity-50"
+                                >
+                                    Save Token
+                                </button>
+
+                                <button 
+                                    onClick={() => setManualTokenMode(false)}
+                                    className="text-xs text-zinc-500 hover:text-white mt-2"
+                                >
+                                    Back to Connect
+                                </button>
+                             </div>
                         )}
 
                         {oauthStep === 'code' && (
