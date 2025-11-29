@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Rocket, Monitor, ArrowUp, Loader2, Play, Plus, Mic, Code2, LayoutDashboard, Database, ImageIcon, Hammer, CheckCircle2, FileText, Layers, Zap } from 'lucide-react';
+import { Rocket, Monitor, ArrowUp, Loader2, Play, Plus, Mic, Code2, LayoutDashboard, Database, ImageIcon, Hammer, CheckCircle2, FileText, Layers, Zap, MousePointer2, X } from 'lucide-react';
 import { generateAppCode, editAppCode, generateProjectPlan } from '../services/geminiService';
 import { DashboardView } from './DashboardView';
 import { IntegrationsModal } from './IntegrationsModal';
@@ -21,7 +21,6 @@ interface Log {
 }
 
 const BuildHome: React.FC<{ onStart: (prompt: string) => void }> = ({ onStart }) => {
-    // ... (Keep BuildHome implementation as is) ...
     const [input, setInput] = useState('');
     const [isListening, setIsListening] = useState(false);
     const recognitionRef = useRef<any>(null);
@@ -134,7 +133,7 @@ interface BuildPageProps {
   initialPrompt?: string | null;
   onPromptHandled?: () => void;
   checkCredits: () => boolean;
-  initialApp?: GeneratedApp | null; // Added prop
+  initialApp?: GeneratedApp | null;
 }
 
 export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialPrompt, onPromptHandled, checkCredits, initialApp }) => {
@@ -153,6 +152,10 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const [originalPrompt, setOriginalPrompt] = useState('');
+
+  // Element Selection State
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedElement, setSelectedElement] = useState<{tagName: string, text: string, htmlSnippet: string} | null>(null);
 
   // Handle Initial App passed from Assistant
   useEffect(() => {
@@ -174,13 +177,12 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
   }, [messages]);
 
   useEffect(() => {
-    if (initialPrompt && state === AppState.IDLE && !app) { // Add !app check
+    if (initialPrompt && state === AppState.IDLE && !app) {
         handleSubmit(initialPrompt);
         if (onPromptHandled) onPromptHandled();
     }
   }, [initialPrompt]);
 
-  // ... (Keep remaining methods: handleAddIntegration, handleMicClick, handleBoostUI, handleSubmit, handleApprovePlan) ...
   const handleAddIntegration = (integration: Integration, apiKey?: string, customOption?: string) => {
     let instruction = `\n\n[System: Add Functionality]\nIntegration: ${integration.name}\nDescription: ${integration.description}\nTechnical Context: ${integration.contextPrompt}`;
     if (apiKey) instruction += `\nAPI KEY: ${apiKey}`;
@@ -206,11 +208,24 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
       setInput(prev => prev + (prev ? ' ' : '') + " [BOOST UI: Ultra-modern, 28px radius cards, padded images]");
   };
 
+  const handleElementSelect = (el: {tagName: string, text: string, htmlSnippet: string}) => {
+      setSelectedElement(el);
+      setIsSelectionMode(false);
+  };
+
   const handleSubmit = async (text: string) => {
     if (!text.trim() || state === AppState.GENERATING || state === AppState.PLANNING) return;
     
     // Credit Check
     if (!checkCredits()) return;
+
+    let promptToSend = text;
+    // Prepend Element Context if selected
+    if (selectedElement) {
+        promptToSend = `[CONTEXT: User selected element <${selectedElement.tagName}> containing text "${selectedElement.text}". HTML context: ${selectedElement.htmlSnippet}] \n\n User Request: ${text}`;
+        // Clear selection after sending
+        setSelectedElement(null); 
+    }
 
     const userMsg: ChatMessage = { role: 'user', content: text, timestamp: Date.now() };
     setMessages(prev => [...prev, userMsg]);
@@ -222,7 +237,8 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
         const firebaseConfig = localStorage.getItem('firebase_config') || undefined;
         const revenueCatKey = localStorage.getItem('revenuecat_key') || undefined;
         try {
-            const updatedApp = await editAppCode(app, userMsg.content, undefined, 'gemini-2.5-flash', firebaseConfig, revenueCatKey);
+            // Use promptToSend which contains context
+            const updatedApp = await editAppCode(app, promptToSend, undefined, 'gemini-2.5-flash', firebaseConfig, revenueCatKey);
             setApp(updatedApp);
             const aiMsg: ChatMessage = { role: 'assistant', content: `**Update Complete** 🛠️\n\n${updatedApp.explanation}`, appData: updatedApp, timestamp: Date.now() };
             setMessages(prev => [...prev, aiMsg]);
@@ -286,7 +302,6 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
       );
   }
 
-  // ... (Rest of JSX Render for BuildPage) ...
   return (
     <div className="flex-1 flex flex-col md:flex-row h-screen overflow-hidden bg-black">
       {/* LEFT PANEL */}
@@ -375,10 +390,23 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
         <div className="p-4 bg-zinc-950/95 backdrop-blur-sm border-t border-zinc-800">
              <div className="shimmer-input-wrapper">
                 <div className="shimmer-input-content flex flex-col focus-within:ring-1 focus-within:ring-zinc-700 transition-all">
+                    
+                    {/* Element Selection Pill */}
+                    {selectedElement && (
+                        <div className="px-4 pt-3 pb-1 flex items-center justify-between bg-zinc-900 border-b border-zinc-800 rounded-t-[28px]">
+                            <div className="flex items-center gap-2 text-xs text-blue-400">
+                                <MousePointer2 size={12} />
+                                <span className="font-mono font-bold">Editing &lt;{selectedElement.tagName}&gt;</span>
+                                <span className="text-zinc-500 truncate max-w-[200px]">"{selectedElement.text}"</span>
+                            </div>
+                            <button onClick={() => setSelectedElement(null)} className="text-zinc-500 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-full p-0.5"><X size={12}/></button>
+                        </div>
+                    )}
+
                     <textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Type a message..."
+                        placeholder={selectedElement ? "Describe changes for this element..." : "Type a message..."}
                         className="w-full bg-transparent text-sm p-4 min-h-[50px] max-h-[120px] resize-none outline-none text-white placeholder:text-zinc-600 font-medium custom-scrollbar"
                         disabled={state === AppState.GENERATING || state === AppState.PLANNING}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(input); } }}
@@ -396,6 +424,24 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
                                     )}
                                 </AnimatePresence>
                              </div>
+                             
+                             {/* Element Select Toggle */}
+                             <button 
+                                type="button"
+                                onClick={() => {
+                                    if(isSelectionMode) setIsSelectionMode(false);
+                                    else {
+                                        setIsSelectionMode(true);
+                                        setSelectedElement(null);
+                                        setActiveTab('preview'); 
+                                    }
+                                }}
+                                className={`p-2 rounded-full transition-colors ${isSelectionMode ? 'bg-blue-500 text-white' : 'hover:bg-zinc-800 text-zinc-400 hover:text-white'}`} 
+                                title="Select Element to Edit"
+                             >
+                                <MousePointer2 size={18} />
+                             </button>
+
                              <button 
                                 type="button"
                                 onClick={handleBoostUI}
@@ -407,7 +453,9 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
                         </div>
                         <div className="flex items-center gap-2">
                             <button onClick={handleMicClick} className={`p-2 rounded-full transition-colors flex items-center justify-center ${isListening ? 'bg-zinc-800 text-white' : 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-300'}`}>{isListening ? <AudioWave /> : <Mic size={18} />}</button>
-                            <button onClick={() => handleSubmit(input)} disabled={!input.trim() || state === AppState.GENERATING || state === AppState.PLANNING} className="h-8 w-8 bg-white hover:bg-zinc-200 rounded-full flex items-center justify-center text-black transition-all shadow-sm active:scale-95 disabled:opacity-30">{state === AppState.GENERATING || state === AppState.PLANNING ? <Loader2 size={14} className="animate-spin" /> : <ArrowUp size={16} strokeWidth={2.5} />}</button>
+                            <button onClick={() => handleSubmit(input)} disabled={!input.trim() || state === AppState.GENERATING || state === AppState.PLANNING} className="h-8 w-8 bg-white hover:bg-zinc-200 rounded-full flex items-center justify-center text-black transition-all shadow-sm active:scale-95 disabled:opacity-30">
+                                {state === AppState.GENERATING || state === AppState.PLANNING ? <Loader2 size={14} className="animate-spin" /> : <ArrowUp size={16} strokeWidth={2.5} />}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -438,6 +486,8 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
                             files={app.files} 
                             code={app.webCompatibleCode} 
                             onConsole={(log) => setConsoleLogs(prev => [...prev, { ...log, type: log.type === 'info' ? 'info' : log.type === 'warn' ? 'warn' : 'error' }])} 
+                            isSelectionMode={isSelectionMode}
+                            onElementSelect={handleElementSelect}
                         />
                     )}
 
