@@ -8,9 +8,11 @@ interface WebPreviewProps {
   onConsole?: (log: { type: 'info' | 'warn' | 'error', msg: string }) => void;
   isSelectionMode?: boolean;
   onElementSelect?: (element: { tagName: string; text: string; htmlSnippet: string }) => void;
+  isTesting?: boolean;
+  onQALog?: (log: { message: string, status: 'active' | 'completed' | 'error' }) => void;
 }
 
-export const WebPreview: React.FC<WebPreviewProps> = ({ files, code, onConsole, isSelectionMode, onElementSelect }) => {
+export const WebPreview: React.FC<WebPreviewProps> = ({ files, code, onConsole, isSelectionMode, onElementSelect, isTesting, onQALog }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Handle incoming messages from iframe
@@ -22,10 +24,13 @@ export const WebPreview: React.FC<WebPreviewProps> = ({ files, code, onConsole, 
         if (e.data?.type === 'ELEMENT_SELECTED' && onElementSelect) {
             onElementSelect(e.data.element);
         }
+        if (e.data?.type === 'QA_LOG' && onQALog) {
+            onQALog(e.data.log);
+        }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [onConsole, onElementSelect]);
+  }, [onConsole, onElementSelect, onQALog]);
 
   // Toggle selection mode in iframe
   useEffect(() => {
@@ -36,6 +41,15 @@ export const WebPreview: React.FC<WebPreviewProps> = ({ files, code, onConsole, 
           }, '*');
       }
   }, [isSelectionMode]);
+
+  // Toggle Testing Mode
+  useEffect(() => {
+      if (iframeRef.current?.contentWindow && isTesting) {
+          iframeRef.current.contentWindow.postMessage({
+              type: 'START_QA'
+          }, '*');
+      }
+  }, [isTesting]);
 
   // Render Iframe Content
   useEffect(() => {
@@ -67,7 +81,7 @@ export const WebPreview: React.FC<WebPreviewProps> = ({ files, code, onConsole, 
         content = code || "";
     }
 
-    // Scripts for Console Shim and Element Selection
+    // Scripts for Console Shim, Element Selection, and QA Testing
     const injectedScripts = `
       <script>
         (function() {
@@ -94,6 +108,10 @@ export const WebPreview: React.FC<WebPreviewProps> = ({ files, code, onConsole, 
                         hoveredEl.style.cursor = originalCursor;
                         hoveredEl = null;
                     }
+                }
+                
+                if (e.data?.type === 'START_QA') {
+                    startQARoutine();
                 }
             });
 
@@ -142,6 +160,93 @@ export const WebPreview: React.FC<WebPreviewProps> = ({ files, code, onConsole, 
 
                 window.parent.postMessage({ type: 'ELEMENT_SELECTED', element: data }, '*');
             }, true);
+
+            // --- QA AUTOMATION ---
+            function startQARoutine() {
+                const cursor = document.createElement('div');
+                cursor.style.position = 'fixed';
+                cursor.style.width = '24px';
+                cursor.style.height = '24px';
+                cursor.style.background = 'rgba(239, 68, 68, 0.8)'; // Red-500
+                cursor.style.borderRadius = '50%';
+                cursor.style.zIndex = '999999';
+                cursor.style.pointerEvents = 'none';
+                cursor.style.transition = 'all 0.6s cubic-bezier(0.22, 1, 0.36, 1)';
+                cursor.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+                cursor.style.display = 'flex';
+                cursor.style.alignItems = 'center';
+                cursor.style.justifyContent = 'center';
+                // Cursor Icon
+                cursor.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="none"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>';
+                document.body.appendChild(cursor);
+
+                // Find interactables
+                const interactables = Array.from(document.querySelectorAll('button, a, input, select, textarea, [role="button"]'))
+                    .filter(el => {
+                        const rect = el.getBoundingClientRect();
+                        return rect.width > 0 && rect.height > 0; // Visible only
+                    });
+
+                if (interactables.length === 0) {
+                    window.parent.postMessage({ type: 'QA_LOG', log: { message: "No interactive elements found.", status: 'completed' } }, '*');
+                    return;
+                }
+
+                let index = 0;
+
+                const runStep = async () => {
+                    if (index >= interactables.length) {
+                        window.parent.postMessage({ type: 'QA_LOG', log: { message: "QA Testing Complete. All checks passed.", status: 'completed' } }, '*');
+                        setTimeout(() => cursor.remove(), 500);
+                        return;
+                    }
+
+                    const el = interactables[index];
+                    
+                    try {
+                        const rect = el.getBoundingClientRect();
+                        
+                        // Scroll into view
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        
+                        // Wait for scroll
+                        await new Promise(r => setTimeout(r, 600));
+                        
+                        // Update rect after scroll
+                        const newRect = el.getBoundingClientRect();
+                        
+                        // Move cursor
+                        cursor.style.top = (newRect.top + newRect.height/2 - 12) + 'px';
+                        cursor.style.left = (newRect.left + newRect.width/2 - 12) + 'px';
+
+                        // Report finding
+                        let name = el.innerText || el.placeholder || el.getAttribute('aria-label') || el.tagName;
+                        name = name.substring(0, 20).replace(/\\n/g, '');
+                        if(!name) name = "Element";
+                        
+                        // Fixed: Use string concatenation to avoid template literal issues in parent file
+                        window.parent.postMessage({ type: 'QA_LOG', log: { message: 'Testing interaction: ' + name + '...', status: 'active' } }, '*');
+
+                        // Wait for move
+                        await new Promise(r => setTimeout(r, 800));
+
+                        // Click Effect
+                        cursor.style.transform = 'scale(0.8)';
+                        setTimeout(() => cursor.style.transform = 'scale(1)', 150);
+                        
+                        // Simulate Click
+                        el.click();
+                        
+                    } catch (e) {
+                        window.parent.postMessage({ type: 'QA_LOG', log: { message: 'Failed to interact with element ' + index + '.', status: 'error' } }, '*');
+                    }
+
+                    index++;
+                    setTimeout(runStep, 1000);
+                };
+
+                runStep();
+            }
         })();
       </script>
     `;

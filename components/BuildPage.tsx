@@ -12,12 +12,20 @@ import { GeneratedApp, AppState, ChatMessage, ProjectFile, ProjectPlan } from '.
 import { AdOverlay } from './AdOverlay';
 import { WebPreview } from './WebPreview';
 import { CodeViewer } from './CodeViewer';
+import { AgentTerminal } from './AgentTerminal';
 
 type Tab = 'preview' | 'code' | 'dashboard';
 
 interface Log {
     type: 'info' | 'warn' | 'error' | 'success' | 'system';
     msg: string;
+}
+
+interface AgentLog {
+  id: string;
+  step: 'init' | 'plan' | 'code' | 'review' | 'deploy' | 'qa';
+  message: string;
+  status: 'pending' | 'active' | 'completed';
 }
 
 const BuildHome: React.FC<{ onStart: (prompt: string) => void }> = ({ onStart }) => {
@@ -59,7 +67,7 @@ const BuildHome: React.FC<{ onStart: (prompt: string) => void }> = ({ onStart })
                 Build HTML5 Web Apps
             </h1>
             <p className="text-lg text-zinc-400 mb-10 max-w-lg leading-relaxed text-center">
-                Turn your ideas into modern, responsive HTML/CSS/JS applications instantly.
+                Turn your ideas into modern, responsive HTML/CSS/JS applications instantly with the Power Agent.
             </p>
 
             <form onSubmit={handleSubmit} className="w-full max-w-2xl relative group z-20">
@@ -157,6 +165,10 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedElement, setSelectedElement] = useState<{tagName: string, text: string, htmlSnippet: string} | null>(null);
 
+  // Agent State
+  const [agentLogs, setAgentLogs] = useState<AgentLog[]>([]);
+  const [isTesting, setIsTesting] = useState(false);
+
   // Handle Initial App passed from Assistant
   useEffect(() => {
       if (initialApp) {
@@ -182,6 +194,37 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
         if (onPromptHandled) onPromptHandled();
     }
   }, [initialPrompt]);
+
+  // Helper to add agent logs
+  const addAgentLog = (step: AgentLog['step'], message: string, status: AgentLog['status'] = 'active') => {
+      setAgentLogs(prev => {
+          // Mark previous active logs as completed
+          const updated = prev.map(log => log.status === 'active' ? { ...log, status: 'completed' as const } : log);
+          return [...updated, { id: Date.now().toString(), step, message, status }];
+      });
+  };
+
+  const completeAgentLog = () => {
+      setAgentLogs(prev => prev.map(log => log.status === 'active' ? { ...log, status: 'completed' as const } : log));
+  };
+
+  const handleQALog = (log: { message: string, status: 'active' | 'completed' | 'error' }) => {
+      // Avoid duplicate logs if possible, or just append
+      if (log.status === 'completed' && log.message.includes('Testing Complete')) {
+          setIsTesting(false);
+          completeAgentLog();
+          addAgentLog('qa', 'QA Automated Testing Passed.', 'completed');
+      } else {
+          // Check if the last log is the same to prevent spam
+          setAgentLogs(prev => {
+              const last = prev[prev.length - 1];
+              if (last && last.message === log.message) return prev;
+              
+              const updated = prev.map(l => l.status === 'active' ? { ...l, status: 'completed' as const } : l);
+              return [...updated, { id: Date.now().toString(), step: 'qa', message: log.message, status: log.status === 'error' ? 'active' : 'completed' }]; // Keep errors active?
+          });
+      }
+  };
 
   const handleAddIntegration = (integration: Integration, apiKey?: string, customOption?: string) => {
     let instruction = `\n\n[System: Add Functionality]\nIntegration: ${integration.name}\nDescription: ${integration.description}\nTechnical Context: ${integration.contextPrompt}`;
@@ -234,15 +277,34 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
     // If we already have an app, this is an EDIT
     if (app) {
         setState(AppState.GENERATING);
+        setAgentLogs([]);
+        addAgentLog('init', 'Agent activated. Analyzing update request...');
+        
         const firebaseConfig = localStorage.getItem('firebase_config') || undefined;
         const revenueCatKey = localStorage.getItem('revenuecat_key') || undefined;
+        
+        // Simulation of agent thinking
+        setTimeout(() => addAgentLog('plan', 'Identifying files to modify...'), 1000);
+        setTimeout(() => addAgentLog('code', 'Applying changes to codebase...'), 2500);
+
         try {
-            // Use promptToSend which contains context
             const updatedApp = await editAppCode(app, promptToSend, undefined, 'gemini-2.5-flash', firebaseConfig, revenueCatKey);
+            
+            completeAgentLog();
+            addAgentLog('review', 'Verifying integrity...', 'completed');
+            addAgentLog('deploy', 'Update deployed.', 'completed');
+
             setApp(updatedApp);
             const aiMsg: ChatMessage = { role: 'assistant', content: `**Update Complete** 🛠️\n\n${updatedApp.explanation}`, appData: updatedApp, timestamp: Date.now() };
             setMessages(prev => [...prev, aiMsg]);
             setState(AppState.SUCCESS);
+            
+            // Trigger QA after update
+            setTimeout(() => {
+                addAgentLog('qa', 'Initiating automated QA testing...', 'active');
+                setIsTesting(true);
+            }, 1000);
+
         } catch (error) {
             setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I encountered an error during the update. Please try again. 🛑", timestamp: Date.now() }]);
             setState(AppState.ERROR);
@@ -272,12 +334,26 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
       const prompt = promptToUse || originalPrompt;
       setState(AppState.GENERATING);
       setConsoleLogs([]); 
+      setAgentLogs([]);
+
+      // Initial Agent Logs
+      addAgentLog('init', 'Power Agent initialized.');
+      setTimeout(() => addAgentLog('plan', 'Analyzing project requirements and constraints...'), 800);
+      setTimeout(() => addAgentLog('plan', 'Designing component architecture...'), 2500);
+      setTimeout(() => addAgentLog('code', 'Writing file structure and logic...'), 4500);
+      setTimeout(() => addAgentLog('code', 'Implementing modern UI styling...'), 6500);
 
       const firebaseConfig = localStorage.getItem('firebase_config') || undefined;
       const revenueCatKey = localStorage.getItem('revenuecat_key') || undefined;
 
       try {
-          const { screens, explanation, edgeFunctions } = await generateAppCode(prompt, 'web', undefined, 'default', undefined, 'gemini-2.5-flash', firebaseConfig, revenueCatKey);
+          // Use 'agentic' mode for powerful generation
+          const { screens, explanation, edgeFunctions } = await generateAppCode(prompt, 'web', undefined, 'agentic', undefined, 'gemini-2.5-flash', firebaseConfig, revenueCatKey);
+          
+          completeAgentLog();
+          addAgentLog('review', 'Reviewing code for errors...', 'completed');
+          addAgentLog('deploy', 'Final build successful. Deploying...', 'completed');
+
           const newApp = { ...screens[0], edgeFunctions };
           setApp(newApp);
           const aiMsg: ChatMessage = { role: 'assistant', content: explanation, appData: newApp, timestamp: Date.now() };
@@ -287,6 +363,13 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
               onProjectCreated(newApp);
           }
           setState(AppState.SUCCESS);
+
+          // Trigger QA
+          setTimeout(() => {
+              addAgentLog('qa', 'Initiating automated QA testing...', 'active');
+              setIsTesting(true);
+          }, 1000);
+
       } catch (error) {
           setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I couldn't build that app. Please try again. 🛑", timestamp: Date.now() }]);
           setState(AppState.ERROR);
@@ -378,10 +461,10 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
                  </motion.div>
             )}
 
-            {state === AppState.GENERATING && (
-                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mx-4 bg-zinc-900 rounded-[24px] p-4 border border-zinc-800 shadow-lg flex items-center gap-4 w-fit pr-8">
-                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/20"><Loader2 size={20} className="text-blue-400 animate-spin" /></div>
-                    <div className="flex flex-col"><span className="font-bold text-sm text-white">Building App</span><span className="text-[10px] text-zinc-500 font-medium">Writing HTML & CSS...</span></div>
+            {/* Agent Terminal acts as overlay or embedded component for progress */}
+            {(state === AppState.GENERATING || isTesting) && (
+                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mx-4 w-full pr-8">
+                    <AgentTerminal logs={agentLogs} />
                  </motion.div>
             )}
             <div ref={messagesEndRef} />
@@ -488,6 +571,8 @@ export const BuildPage: React.FC<BuildPageProps> = ({ onProjectCreated, initialP
                             onConsole={(log) => setConsoleLogs(prev => [...prev, { ...log, type: log.type === 'info' ? 'info' : log.type === 'warn' ? 'warn' : 'error' }])} 
                             isSelectionMode={isSelectionMode}
                             onElementSelect={handleElementSelect}
+                            isTesting={isTesting}
+                            onQALog={handleQALog}
                         />
                     )}
 

@@ -133,26 +133,26 @@ export const generateAppCode = async (
   const ai = getAI();
   
   const commonRules = `
-    You are an elite Senior Frontend Engineer.
+    You are an elite Senior Frontend Engineer & Agentic Coder.
     
     CORE GOAL: Generate a PRODUCTION-READY, MULTI-FILE project.
     
-    TONE: Friendly, Professional, Emoji-rich 🚀.
+    CRITICAL AGENTIC BEHAVIORS:
+    1. **Architect First**: Plan the file structure logically before writing code.
+    2. **Self-Correction**: Review your code for common errors (e.g., missing closing tags, undefined variables) before outputting.
+    3. **Robustness**: Ensure all interactive elements have valid event listeners and error handling.
+    4. **Modern Standards**: Use Semantic HTML5, ES6+ JavaScript, and Tailwind CSS Utility classes.
+    
+    TONE: Professional, Technical, yet Friendly.
     OUTPUT: JSON.
     
-    CRITICAL: 
-    - The user wants a **FRESH BUILD**. Do not assume previous files exist.
-    - **DELETE OLD CODE**: The files you generate will completely replace any existing files.
-    - **EMOJIS**: Use emojis in your explanation to make it engaging.
-    - **BOLD**: Use **bold** for important concepts in the explanation.
-
     VISUAL GUIDELINES (STRICT & MODERN):
     - THEME: Ultra-Modern. Prefer Dark Mode unless specified. Palette: Black (#000000), White (#FFFFFF), and Zinc Greys.
     - TYPOGRAPHY: Use 'Poppins' for Headings and 'Inter' for Body text. Use 'Roboto Mono' for code.
     - ICONS: Use Google Material Symbols Outlined (via CDN) for a polished look. Class: 'material-symbols-outlined'.
     
     LANDING PAGE VISUALS:
-    - **DO NOT** use generic placeholder image URLs (like placehold.co) for the main visual elements (Hero backgrounds, feature graphics) unless strictly necessary for a specific photo (e.g. a person).
+    - **DO NOT** use generic placeholder image URLs (like placehold.co) for the main visual elements.
     - **GENERATE CODE-BASED VISUALS**: Instead of images, create modern visuals using:
       - CSS Gradients (conic, linear, radial) and blurs.
       - Tailwind patterns (grid, dots).
@@ -224,7 +224,7 @@ export const generateAppCode = async (
   const systemInstruction = `
     ${commonRules}
     ${platform === 'web' ? webInstructions : mobileInstructions}
-    ${mode === 'redesign' ? 'MODE: REDESIGN. Modernize UI.' : 'MODE: GENERATE. Build from scratch.'}
+    ${mode === 'redesign' ? 'MODE: REDESIGN. Modernize UI.' : (mode === 'agentic' ? 'MODE: AGENTIC POWER CODER. Maximize logic, error handling, and robust architecture.' : 'MODE: GENERATE. Build from scratch.')}
   `;
 
   const parts: Part[] = [{ text: prompt }];
@@ -294,7 +294,7 @@ export const editAppCode = async (
   const ai = getAI();
 
   const systemInstruction = `
-    You are an expert Senior Developer.
+    You are an expert Senior Developer & Agent.
     TASK: UPDATE the existing app based on: "${userPrompt}".
     
     TONE: Friendly, Helpful, **Bold** important parts, use Emojis 🛠️.
