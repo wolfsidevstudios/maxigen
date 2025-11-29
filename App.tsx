@@ -460,7 +460,64 @@ export default function App() {
           (prompt) => startBackgroundBuild(prompt) // Trigger Build callback
       );
 
-      // 2. If result is special flag, send to Gemini
+      // 2. Handle structured ACTION response
+      if (typeof result === 'object' && result !== null && 'action' in result && result.action) {
+          const { type, payload } = result.action;
+          
+          await speakText(result.text);
+
+          switch (type) {
+              case 'NAVIGATE':
+                  if (payload === 'settings') setActivePage('settings');
+                  else if (payload === 'projects') setActivePage('projects');
+                  else if (payload === 'templates') setActivePage('templates');
+                  else if (payload === 'home') setActivePage('home');
+                  else if (payload === 'build') setActivePage('build');
+                  break;
+              
+              case 'VIEW_MODE':
+                  if (activePage === 'home') {
+                      if (payload === 'code') { /* Code viewer logic usually per app, can switch tab if on build page */ }
+                      else if (payload === 'preview') setViewMode('prototype');
+                      else if (payload === 'deploy') setViewMode('deploy');
+                  } else if (activePage === 'build') {
+                      // We don't have direct access to build page tabs state here, 
+                      // but in a real app we would use a global state manager.
+                      // For now, we route to page.
+                  }
+                  break;
+
+              case 'ZOOM':
+                  if (activePage === 'home') {
+                      if (payload === 'in') setZoom(z => Math.min(2, z + 0.2));
+                      else if (payload === 'out') setZoom(z => Math.max(0.5, z - 0.2));
+                      else if (payload === 'reset') { setZoom(1); setPan({x:0, y:0}); }
+                  }
+                  break;
+
+              case 'PROJECT':
+                  if (payload === 'new') handleNewProject();
+                  break;
+
+              case 'AUTH':
+                  if (payload === 'logout') handleLogout();
+                  break;
+
+              case 'PROMPT':
+                  // Lazily inject this prompt into the current active context
+                  if (activePage === 'build') {
+                      // If on build page, we set the pending prompt which BuildPage listens to
+                      setPendingBuildPrompt(payload);
+                  } else {
+                      // If on home/canvas, submit to processInput
+                      processInput(payload);
+                  }
+                  break;
+          }
+          return;
+      }
+
+      // 3. Fallback to Gemini if no local command matched
       if (result === "AI_PROCESS_NEEDED") {
           try {
               const ai = new GoogleGenAI({ apiKey: localStorage.getItem('gemini_api_key') || process.env.API_KEY });
@@ -474,20 +531,19 @@ export default function App() {
           } catch (e) {
               await speakText("I'm having trouble connecting to my brain right now.");
           }
-      } else {
-          // 3. Else speak the local command result
+      } else if (typeof result === 'string') {
+          // Speak string result from legacy commands (if any remain)
           await speakText(result);
+      } else if (result && 'text' in result) {
+          // Speak text from structured result without action
+          await speakText(result.text);
       }
   };
 
   const startBackgroundBuild = async (prompt: string) => {
-      // Logic to build in "background" -> We simulate by calling generateAppCode but not blocking UI immediately
-      // Update widget status to 'building' is handled in processVoiceCommand
-      
       try {
           const { screens, explanation, edgeFunctions } = await generateAppCode(prompt, 'web');
           
-          // Update the widget to "Ready"
           setWidgets(prev => prev.map(w => {
               if (w.type === 'builder' && w.data.prompt === prompt) {
                   return { ...w, data: { ...w.data, status: 'ready', app: { ...screens[0], edgeFunctions } } };
@@ -499,13 +555,12 @@ export default function App() {
 
       } catch (e) {
           console.error(e);
-          setWidgets(prev => prev.filter(w => !(w.type === 'builder' && w.data.prompt === prompt))); // Remove failed
+          setWidgets(prev => prev.filter(w => !(w.type === 'builder' && w.data.prompt === prompt))); 
           await speakText("Something went wrong while building your app.");
       }
   };
 
   const handleOpenBackgroundApp = (appData: GeneratedApp) => {
-      // Switch to build page and load the app
       setActivePage('build');
       setLoadedApp(appData);
   };
@@ -514,7 +569,7 @@ export default function App() {
     try {
         await signOut(auth);
         setUser(null);
-        setViewState('marketing'); // Go back to marketing page on logout
+        setViewState('marketing'); 
         setActivePage('home');
     } catch (error) {
         console.error("Logout error", error);
@@ -543,7 +598,6 @@ export default function App() {
     scrollToBottom();
   }, [messages]);
 
-  // Sync projects with canvasApps creation
   useEffect(() => {
     setProjects(currentProjects => {
         const existingIds = new Set(currentProjects.map(p => p.id));
@@ -562,7 +616,6 @@ export default function App() {
     });
   }, [canvasApps]);
 
-  // Handler for Build Page generated apps
   const handleBuildProjectCreated = (appData: GeneratedApp) => {
       setProjects(prev => [{
           id: crypto.randomUUID(),
@@ -574,12 +627,10 @@ export default function App() {
   };
 
   const handleUseTemplate = (prompt: string, templatePlatform: 'web' | 'mobile') => {
-      // Always direct templates to the Build Tool
       setActivePage('build');
       setPendingBuildPrompt(prompt);
   };
 
-  // Auto-select app when switching to Prototype mode
   useEffect(() => {
       if ((viewMode === 'prototype' || viewMode === 'deploy') && !selectedAppId && canvasApps.length > 0) {
           setSelectedAppId(canvasApps[0].id);
@@ -634,7 +685,6 @@ export default function App() {
   const processInput = async (text: string, image?: string, mode?: GenerationMode, url?: string) => {
     if ((!text.trim() && !image) || state === AppState.GENERATING) return;
 
-    // Credit Check
     if (!checkAndConsumeCredit()) return;
 
     const usedMode = mode || generationMode;
