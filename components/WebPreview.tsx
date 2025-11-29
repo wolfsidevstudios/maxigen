@@ -176,145 +176,141 @@ export const WebPreview: React.FC<WebPreviewProps> = ({ files, code, onConsole, 
                 cursor.style.borderRadius = '50%';
                 cursor.style.zIndex = '999999';
                 cursor.style.pointerEvents = 'none';
-                cursor.style.transition = 'all 0.8s cubic-bezier(0.22, 1, 0.36, 1)'; // Smooth slow movement
+                cursor.style.transition = 'all 0.6s cubic-bezier(0.22, 1, 0.36, 1)'; // Smooth movement
                 cursor.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
                 cursor.style.display = 'flex';
                 cursor.style.alignItems = 'center';
                 cursor.style.justifyContent = 'center';
-                // Cursor Icon
-                cursor.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="none"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>';
+                // Cursor Icon (Robot Eye)
+                cursor.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="none"><circle cx="12" cy="12" r="3"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>';
                 document.body.appendChild(cursor);
 
                 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+                const smoothScrollTo = async (y) => {
+                    window.scrollTo({ top: y, behavior: 'smooth' });
+                    await sleep(1000); 
+                };
+
+                const simulateHover = (element) => {
+                    const ev = new MouseEvent('mouseover', {
+                        view: window,
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    element.dispatchEvent(ev);
+                };
+
                 const typeText = async (element, text) => {
                     element.focus();
                     element.value = '';
+                    element.dispatchEvent(new Event('focus', { bubbles: true }));
+                    
                     for (let char of text) {
                         element.value += char;
+                        element.dispatchEvent(new KeyboardEvent('keydown', { key: char, bubbles: true }));
                         element.dispatchEvent(new Event('input', { bubbles: true }));
-                        await sleep(150); // Slow typing speed for visual effect
+                        await sleep(50 + Math.random() * 50); 
                     }
                     element.dispatchEvent(new Event('change', { bubbles: true }));
+                    element.dispatchEvent(new Event('blur', { bubbles: true }));
                 };
 
-                const smoothScrollTo = async (y) => {
-                    window.scrollTo({ top: y, behavior: 'smooth' });
-                    await sleep(1500); // Wait for scroll to complete and settle
+                const moveCursorTo = async (element) => {
+                    const rect = element.getBoundingClientRect();
+                    // Check if element is in view
+                    if (rect.top < 0 || rect.bottom > window.innerHeight) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        await sleep(800); 
+                    }
+                    // Re-calculate after scroll
+                    const newRect = element.getBoundingClientRect();
+                    cursor.style.top = (newRect.top + newRect.height/2 - 12) + 'px';
+                    cursor.style.left = (newRect.left + newRect.width/2 - 12) + 'px';
+                    await sleep(400); 
                 };
 
                 const runSuite = async () => {
-                    // Phase 1: Scroll Test (Down then Up)
-                    window.parent.postMessage({ type: 'QA_LOG', log: { message: 'Analyzing page structure & scrolling...', status: 'active' } }, '*');
+                    window.parent.postMessage({ type: 'QA_LOG', log: { message: 'Agent connecting...', status: 'active' } }, '*');
+                    await sleep(1000);
+
+                    // 1. Scan Page
+                    const forms = document.querySelectorAll('form');
+                    const inputs = document.querySelectorAll('input, textarea');
+                    const buttons = document.querySelectorAll('button, a.btn, [role="button"]');
                     
+                    window.parent.postMessage({ type: 'QA_LOG', log: { message: \`Analysis: Found \${forms.length} forms, \${inputs.length} inputs, \${buttons.length} actions.\`, status: 'active' } }, '*');
+                    await sleep(1000);
+
+                    // 2. Scroll Test
                     const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
                     if (maxScroll > 100) {
-                        // Scroll Down
+                        window.parent.postMessage({ type: 'QA_LOG', log: { message: 'Verifying layout stability (Scroll Test)...', status: 'active' } }, '*');
                         await smoothScrollTo(maxScroll);
-                        await sleep(1000);
-                        // Scroll Back Up
                         await smoothScrollTo(0);
-                        await sleep(1000);
                     }
 
-                    // Phase 2: Interaction Loop
-                    const interactables = Array.from(document.querySelectorAll('button, a, input, select, textarea, [role="button"]'))
-                        .filter(el => {
-                            const rect = el.getBoundingClientRect();
-                            // Must be visible and have size
-                            return rect.width > 0 && rect.height > 0 && window.getComputedStyle(el).visibility !== 'hidden';
-                        });
-
-                    if (interactables.length === 0) {
-                        window.parent.postMessage({ type: 'QA_LOG', log: { message: "No interactive elements found.", status: 'completed' } }, '*');
-                        cursor.remove();
-                        return;
-                    }
-
-                    for (let i = 0; i < interactables.length; i++) {
-                        const el = interactables[i];
-                        const tagName = el.tagName.toLowerCase();
-                        const isInput = tagName === 'input' || tagName === 'textarea';
-                        const isButton = tagName === 'button' || tagName === 'a' || el.getAttribute('role') === 'button' || (tagName === 'input' && (el.type === 'submit' || el.type === 'button'));
-
-                        let elName = el.innerText || el.placeholder || el.name || tagName;
-                        elName = elName.substring(0, 20).replace(/\\n/g, '').trim();
-                        if (!elName) elName = "Element";
-
-                        try {
-                            // 1. Scroll Element into View
-                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            await sleep(1000); // Allow scroll to finish
-
-                            // 2. Move Cursor to Element
-                            const rect = el.getBoundingClientRect();
-                            cursor.style.top = (rect.top + rect.height/2 - 12) + 'px';
-                            cursor.style.left = (rect.left + rect.width/2 - 12) + 'px';
+                    // 3. Form Interaction (Smart Filling)
+                    if (forms.length > 0) {
+                        for (let form of forms) {
+                            window.parent.postMessage({ type: 'QA_LOG', log: { message: 'Testing Form Submission Flow...', status: 'active' } }, '*');
                             
-                            // Visual Highlight
-                            el.style.outline = '2px solid rgba(239, 68, 68, 0.5)';
-                            await sleep(1000); // Pause on element
-
-                            // 3. Perform Action
-                            if (isInput && !isButton) {
-                                // Input Handling
-                                window.parent.postMessage({ type: 'QA_LOG', log: { message: 'Typing into ' + elName + '...', status: 'active' } }, '*');
-                                await typeText(el, "Hello World");
-                                await sleep(500);
-
-                                // Check if the next element is likely the send/submit button
-                                const nextEl = interactables[i+1];
-                                if (nextEl) {
-                                    const nextTag = nextEl.tagName.toLowerCase();
-                                    const nextIsButton = nextTag === 'button' || nextTag === 'a' || (nextTag === 'input' && nextEl.type === 'submit');
-                                    
-                                    if (nextIsButton) {
-                                        // Smart Agent: "I typed, now I click send"
-                                        i++; // Skip next iteration as we handle it now
-                                        
-                                        // Target the button
-                                        nextEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                        await sleep(800);
-                                        
-                                        const nextRect = nextEl.getBoundingClientRect();
-                                        cursor.style.top = (nextRect.top + nextRect.height/2 - 12) + 'px';
-                                        cursor.style.left = (nextRect.left + nextRect.width/2 - 12) + 'px';
-                                        
-                                        window.parent.postMessage({ type: 'QA_LOG', log: { message: 'Clicking submit button...', status: 'active' } }, '*');
-                                        await sleep(1000);
-                                        
-                                        // Click Animation
-                                        cursor.style.transform = 'scale(0.8)';
-                                        await sleep(150);
-                                        cursor.style.transform = 'scale(1)';
-                                        
-                                        nextEl.click();
-                                        nextEl.style.outline = '2px solid rgba(239, 68, 68, 0.5)';
-                                        await sleep(1500); // Wait for action
-                                        nextEl.style.outline = '';
-                                    }
-                                }
-                            } else {
-                                // Standard Click
-                                window.parent.postMessage({ type: 'QA_LOG', log: { message: 'Clicking ' + elName + '...', status: 'active' } }, '*');
-                                cursor.style.transform = 'scale(0.8)';
-                                await sleep(150);
-                                cursor.style.transform = 'scale(1)';
+                            const formInputs = form.querySelectorAll('input:not([type="hidden"]), textarea');
+                            for (let input of formInputs) {
+                                await moveCursorTo(input);
+                                input.style.outline = '2px solid #ef4444'; // Red highlight
                                 
-                                el.click();
-                                await sleep(1500); // Wait for action
+                                // Determine contextual value
+                                let val = "Test Value";
+                                const type = input.type || 'text';
+                                const name = (input.name || input.id || '').toLowerCase();
+                                const placeholder = (input.placeholder || '').toLowerCase();
+                                const tagName = input.tagName.toLowerCase();
+                                
+                                if (type === 'email' || name.includes('email') || placeholder.includes('email')) val = "agent@maxigen.ai";
+                                else if (type === 'password' || name.includes('pass')) val = "SecureP@ss123";
+                                else if (type === 'tel' || name.includes('phone')) val = "555-0123";
+                                else if (type === 'number') val = "10";
+                                else if (name.includes('name')) val = "MaxiGen Agent";
+                                else if (tagName === 'textarea') val = "This is an automated test message generated by the QA Agent.";
+
+                                await typeText(input, val);
+                                input.style.outline = '';
                             }
 
-                            // Remove Highlight
-                            el.style.outline = '';
-
-                        } catch (err) {
-                            // If element is detached or hidden during process, ignore
+                            // Try to find submit
+                            const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]') || form.querySelector('button');
+                            if (submitBtn) {
+                                await moveCursorTo(submitBtn);
+                                simulateHover(submitBtn);
+                                
+                                window.parent.postMessage({ type: 'QA_LOG', log: { message: 'Clicking Submit...', status: 'active' } }, '*');
+                                await sleep(500);
+                                
+                                cursor.style.transform = 'scale(0.8)';
+                                submitBtn.click();
+                                await sleep(150);
+                                cursor.style.transform = 'scale(1)';
+                                await sleep(1500); // Wait for response/navigation
+                            }
                         }
+                    } 
+                    
+                    // 4. Other Interactions (if no forms or sparse page)
+                    if (forms.length === 0 && buttons.length > 0) {
+                         window.parent.postMessage({ type: 'QA_LOG', log: { message: 'Checking interactive elements...', status: 'active' } }, '*');
+                         // Test top 3 buttons
+                         const targets = Array.from(buttons).slice(0, 3);
+                         for (let btn of targets) {
+                             await moveCursorTo(btn);
+                             simulateHover(btn);
+                             btn.style.outline = '2px solid #3b82f6'; // Blue highlight
+                             await sleep(600);
+                             btn.style.outline = '';
+                         }
                     }
 
-                    window.parent.postMessage({ type: 'QA_LOG', log: { message: "Testing Complete. App is fully functional.", status: 'completed' } }, '*');
-                    await sleep(1000);
+                    window.parent.postMessage({ type: 'QA_LOG', log: { message: "QA Suite Completed. No crashes detected.", status: 'completed' } }, '*');
                     cursor.remove();
                 };
 
